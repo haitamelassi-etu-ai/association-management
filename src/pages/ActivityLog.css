@@ -1,0 +1,103 @@
+/* Activity Log Styles */
+
+.activity-timeline {
+  padding: 20px 0;
+}
+
+.activity-item {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  border-left: 3px solid #e2e8f0;
+  margin-bottom: 16px;
+  transition: all 0.3s;
+  border-radius: 0 8px 8px 0;
+}
+
+.activity-item:hover {
+  background: #f7fafc;
+  border-left-color: #667eea;
+}
+
+.activity-item.green {
+  border-left-color: #48bb78;
+}
+
+.activity-item.blue {
+  border-left-color: #4299e1;
+}
+
+.activity-item.red {
+  border-left-color: #f56565;
+}
+
+.activity-item.orange {
+  border-left-color: #ed8936;
+}
+
+.activity-item.purple {
+  border-left-color: #9f7aea;
+}
+
+.activity-item.gray {
+  border-left-color: #a0aec0;
+}
+
+.activity-icon-wrapper {
+  flex-shrink: 0;
+}
+
+.activity-icon-large {
+  font-size: 32px;
+  display: block;
+}
+
+.activity-content-wrapper {
+  flex: 1;
+}
+
+.activity-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.activity-user {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 14px;
+}
+
+.activity-time {
+  font-size: 12px;
+  color: #718096;
+}
+
+.activity-description {
+  color: #4a5568;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+
+.activity-timestamp {
+  font-size: 11px;
+  color: #a0aec0;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4);
+}

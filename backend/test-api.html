@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API - Adel Elouerif</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .success {
+            background: #10b981;
+        }
+        .error {
+            background: #ef4444;
+        }
+        pre {
+            background: #1e293b;
+            color: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        .result {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test API Backend</h1>
+        <p>Backend URL: <strong>http://localhost:5000</strong></p>
+        
+        <hr>
+        
+        <h2>1. Create Admin User</h2>
+        <button onclick="createAdmin()">➕ Create Admin</button>
+        
+        <h2>2. Login</h2>
+        <button onclick="login()">🔐 Login Admin</button>
+        
+        <h2>3. Get Current User</h2>
+        <button onclick="getCurrentUser()">👤 Get Me (Need Token)</button>
+        
+        <h2>4. Create Beneficiary</h2>
+        <button onclick="createBeneficiary()">👥 Create Beneficiary (Need Token)</button>
+        
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        let token = '';
+        
+        async function createAdmin() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>🔄 Creating admin user...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nom: 'Admin',
+                        prenom: 'Principal',
+                        email: 'admin@adelelouerif.org',
+                        password: 'admin123',
+                        role: 'admin',
+                        telephone: '0612345678',
+                        poste: 'Directeur'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.token;
+                    resultDiv.innerHTML = `
+                        <h3 class="success">✅ Admin Created Successfully!</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <p><strong>Token saved!</strong> You can now test other endpoints.</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <h3 class="error">❌ Error</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3 class="error">❌ Network Error</h3>
+                    <p>${error.message}</p>
+                    <p>Make sure backend is running on http://localhost:5000</p>
+                `;
+            }
+        }
+        
+        async function login() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>🔄 Logging in...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@adelelouerif.org',
+                        password: 'admin123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.token;
+                    resultDiv.innerHTML = `
+                        <h3 class="success">✅ Login Successful!</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <p><strong>Token saved!</strong></p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <h3 class="error">❌ Login Failed</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3 class="error">❌ Network Error</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+        
+        async function getCurrentUser() {
+            const resultDiv = document.getElementById('result');
+            
+            if (!token) {
+                resultDiv.innerHTML = '<h3 class="error">❌ No token! Please login first.</h3>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>🔄 Getting current user...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/me', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <h3 class="success">✅ User Data Retrieved!</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <h3 class="error">❌ Error</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3 class="error">❌ Network Error</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+        
+        async function createBeneficiary() {
+            const resultDiv = document.getElementById('result');
+            
+            if (!token) {
+                resultDiv.innerHTML = '<h3 class="error">❌ No token! Please login first.</h3>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>🔄 Creating beneficiary...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/beneficiaries', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        nom: 'El Amrani',
+                        prenom: 'Mohamed',
+                        dateNaissance: '1985-05-15',
+                        telephone: '0612345678',
+                        situationFamiliale: 'Célibataire',
+                        nombreEnfants: 0,
+                        professionAvant: 'Ouvrier',
+                        notes: 'Test beneficiary created via API'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <h3 class="success">✅ Beneficiary Created!</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <h3 class="error">❌ Error</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3 class="error">❌ Network Error</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

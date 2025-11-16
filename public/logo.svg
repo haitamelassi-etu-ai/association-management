@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Maison stylisée -->
+  <path d="M 50 10 L 85 40 L 85 85 L 15 85 L 15 40 Z" fill="url(#grad1)"/>
+  <!-- Toit -->
+  <path d="M 50 5 L 90 40 L 10 40 Z" fill="#fbbf24"/>
+  <!-- Porte -->
+  <rect x="40" y="60" width="20" height="25" fill="#fbbf24" rx="2"/>
+  <!-- Fenêtres -->
+  <rect x="25" y="50" width="10" height="10" fill="#fbbf24" rx="1"/>
+  <rect x="65" y="50" width="10" height="10" fill="#fbbf24" rx="1"/>
+  <!-- Coeur (symbole de solidarité) -->
+  <path d="M 50 35 C 48 32 45 30 42 30 C 38 30 35 33 35 37 C 35 42 50 50 50 50 C 50 50 65 42 65 37 C 65 33 62 30 58 30 C 55 30 52 32 50 35 Z" fill="#fbbf24"/>
+</svg>

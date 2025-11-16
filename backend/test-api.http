@@ -1,0 +1,84 @@
+### 1. Create Admin User
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "nom": "Admin",
+  "prenom": "Principal",
+  "email": "admin@adelelouerif.org",
+  "password": "admin123",
+  "role": "admin",
+  "telephone": "0612345678",
+  "poste": "Directeur"
+}
+
+### 2. Login Admin
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@adelelouerif.org",
+  "password": "admin123"
+}
+
+### 3. Get Current User (Replace TOKEN with token from login)
+GET http://localhost:5000/api/auth/me
+Authorization: Bearer TOKEN
+
+### 4. Get All Beneficiaries
+GET http://localhost:5000/api/beneficiaries
+Authorization: Bearer TOKEN
+
+### 5. Create Beneficiary
+POST http://localhost:5000/api/beneficiaries
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "nom": "El Amrani",
+  "prenom": "Mohamed",
+  "dateNaissance": "1985-05-15",
+  "telephone": "0612345678",
+  "situationFamiliale": "Célibataire",
+  "nombreEnfants": 0,
+  "professionAvant": "Ouvrier",
+  "notes": "Premier bénéficiaire créé via API"
+}
+
+### 6. Get Beneficiaries Stats
+GET http://localhost:5000/api/beneficiaries/stats/dashboard
+Authorization: Bearer TOKEN
+
+### 7. Create Announcement
+POST http://localhost:5000/api/announcements
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "titre": "Réunion d'équipe",
+  "contenu": "Réunion importante demain à 10h",
+  "type": "urgent",
+  "priorite": "haute",
+  "destinataires": ["admin", "staff"]
+}
+
+### 8. Get Announcements
+GET http://localhost:5000/api/announcements
+Authorization: Bearer TOKEN
+
+### 9. Check In (Attendance)
+POST http://localhost:5000/api/attendance/checkin
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "location": {
+    "type": "Point",
+    "coordinates": [-6.8498, 33.9716]
+  }
+}
+
+### 10. Get My Attendance
+GET http://localhost:5000/api/attendance/me
+Authorization: Bearer TOKEN
+
