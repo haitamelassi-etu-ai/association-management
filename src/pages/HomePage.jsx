@@ -113,7 +113,7 @@ function HomePage() {
           </nav>
 
           <div className="header-image-container">
-            <img src="/images/المبادرة.png" alt="المبادرة" className="header-initiative-image" />
+            <img src="/images/initiative.png" alt="المبادرة" className="header-initiative-image" />
           </div>
         </div>
       </header>
