@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import './UnifiedLogin.css'
+import { API_URL } from '../utils/api'
 
 function UnifiedLogin() {
   const [email, setEmail] = useState('')
@@ -42,10 +43,19 @@ function UnifiedLogin() {
 
     // Check Professional/Staff from MongoDB
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      console.log('🔄 Attempting login to:', `${API_URL}/auth/login`);
+      
+      const response = await axios.post(`${API_URL}/auth/login`, {
         email,
         password
-      })
+      }, {
+        timeout: 10000, // 10 seconds timeout
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('✅ Login response:', response.data);
 
       if (response.data.success) {
         const user = response.data.data
@@ -68,9 +78,17 @@ function UnifiedLogin() {
         navigate('/professional/dashboard')
       }
     } catch (err) {
+      console.error('❌ Login error:', err);
       setLoading(false)
-      if (err.response?.status === 401) {
+      
+      if (err.code === 'ECONNABORTED') {
+        setError('Délai d\'attente dépassé. Vérifiez votre connexion.')
+      } else if (err.code === 'ERR_NETWORK') {
+        setError('Erreur réseau. Le serveur est-il démarré?')
+      } else if (err.response?.status === 401) {
         setError('Email ou mot de passe incorrect')
+      } else if (err.response?.status === 500) {
+        setError('Erreur serveur. Réessayez dans un moment.')
       } else {
         setError('Erreur de connexion. Vérifiez votre connexion.')
       }
@@ -81,9 +99,15 @@ function UnifiedLogin() {
     <div className="unified-login-page">
       <div className="login-container">
         <div className="login-header">
-          <div className="logo-circle">🏛️</div>
+          <div className="logo-container">
+            <div className="logo-badge">
+              <div className="logo-emoji">🤝</div>
+              <div className="logo-ring"></div>
+            </div>
+          </div>
           <h1>Association Adel Elouerif</h1>
-          <p>Espace de connexion</p>
+          <p className="subtitle">عدل الوريف</p>
+          <p className="tagline">Solidarité • Dignité • Espoir</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">

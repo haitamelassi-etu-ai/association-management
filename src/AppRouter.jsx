@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import HomePage from './pages/HomePage'
+import DonationPage from './pages/DonationPage'
+import EmergencyPage from './pages/EmergencyPage'
 import UnifiedLogin from './pages/UnifiedLogin'
 import AdminPanel from './pages/AdminPanel'
 import UserManagement from './pages/UserManagement'
@@ -17,6 +19,10 @@ import AnalyticsDashboard from './professional/AnalyticsDashboard'
 import BackupManager from './components/BackupManager'
 import MealDistribution from './components/MealDistribution'
 import AdvancedReports from './components/AdvancedReports'
+import MedicationManagement from './components/MedicationManagement'
+import PharmacyStock from './components/PharmacyStock'
+import ExitTracking from './components/ExitTracking'
+import FoodStockManagement from './components/FoodStockManagement'
 
 function AppRouter() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false)
@@ -56,6 +62,8 @@ function AppRouter() {
     <Router>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/don" element={<DonationPage />} />
+        <Route path="/urgence" element={<EmergencyPage />} />
         <Route 
           path="/login" 
           element={<UnifiedLogin />} 
@@ -104,6 +112,10 @@ function AppRouter() {
         <Route path="/professional/reports" element={<Reports />} />
         <Route path="/professional/backup" element={<BackupManager />} />
         <Route path="/professional/meals" element={<MealDistribution />} />
+        <Route path="/professional/pharmacy" element={<PharmacyStock />} />
+        <Route path="/professional/medications" element={<MedicationManagement />} />
+        <Route path="/professional/exit-tracking" element={<ExitTracking />} />
+        <Route path="/professional/food-stock" element={<FoodStockManagement />} />
         <Route path="/professional/advanced-reports" element={<AdvancedReports />} />
       </Routes>
     </Router>

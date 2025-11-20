@@ -1,20 +1,50 @@
 .unified-login-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 10s ease infinite;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.unified-login-page::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: moveBackground 20s linear infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes moveBackground {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(50px, 50px); }
 }
 
 .login-container {
-  background: white;
-  border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  max-width: 500px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 30px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3), 
+              0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  max-width: 520px;
   width: 100%;
-  padding: 3rem;
-  animation: fadeInUp 0.5s ease;
+  padding: 3.5rem;
+  animation: fadeInUp 0.6s ease;
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes fadeInUp {
@@ -33,29 +63,87 @@
   margin-bottom: 2.5rem;
 }
 
-.logo-circle {
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 50%;
+.logo-container {
+  position: relative;
+  margin: 0 auto 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.logo-badge {
+  width: 110px;
+  height: 110px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.5rem;
-  margin: 0 auto 1.5rem;
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.logo-emoji {
+  font-size: 4rem;
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 4px 12px rgba(102, 126, 234, 0.3));
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.logo-ring {
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  opacity: 0.15;
+  animation: ring-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ring-pulse {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 0.15;
+  }
+  50% { 
+    transform: scale(1.15);
+    opacity: 0.25;
+  }
 }
 
 .login-header h1 {
   color: #2d3748;
-  font-size: 1.8rem;
+  font-size: 1.9rem;
   margin-bottom: 0.5rem;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.login-header p {
+.login-header .subtitle {
+  color: #667eea;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  direction: rtl;
+}
+
+.login-header .tagline {
   color: #718096;
-  font-size: 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-style: italic;
 }
 
 .login-form {
@@ -152,13 +240,20 @@
 .login-info {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 2rem;
+.info-box {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  padding: 1.3rem;
+  border-radius: 15px;
+  text-align: center;
+  border: 2px solid rgba(102, 126, 234, 0.15);
+  transition: all 0.3s ease;
 }
 
-.info-box {
-  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-  padding: 1.2rem;
+.info-box:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+  border-color: rgba(102, 126, 234, 0.3);
+} padding: 1.2rem;
   border-radius: 12px;
   text-align: center;
   border: 2px solid #e2e8f0;

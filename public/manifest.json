@@ -77,18 +77,32 @@
   },
   "shortcuts": [
     {
-      "name": "Admin Panel",
-      "short_name": "Admin",
-      "description": "Accès rapide au panneau d'administration",
-      "url": "/login",
-      "icons": [{ "src": "/icon-96x96.png", "sizes": "96x96" }]
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Voir le tableau de bord",
+      "url": "/professional/dashboard",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Professional Portal",
-      "short_name": "Portal",
-      "description": "Accès au portail professionnel",
-      "url": "/login",
-      "icons": [{ "src": "/icon-96x96.png", "sizes": "96x96" }]
+      "name": "Bénéficiaires",
+      "short_name": "Bénéficiaires",
+      "description": "Gérer les bénéficiaires",
+      "url": "/professional/beneficiaries",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Médicaments",
+      "short_name": "Médicaments",
+      "description": "Gérer les médicaments",
+      "url": "/professional/medications",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Sorties",
+      "short_name": "Sorties",
+      "description": "Gérer les sorties résidents",
+      "url": "/professional/exit-tracking",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
     }
   ]
 }

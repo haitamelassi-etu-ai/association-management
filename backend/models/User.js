@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'staff', 'volunteer'],
+    enum: ['admin', 'responsable', 'staff', 'volunteer'],
     default: 'staff'
   },
   telephone: {
@@ -64,6 +64,9 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
+  // Skip hashing if explicitly told to (for seeding)
+  if (this.$locals.skipPasswordHash) return next();
+  
   if (!this.isModified('password')) return next();
   
   const salt = await bcrypt.genSalt(10);

@@ -1,0 +1,534 @@
+/* Emergency Page Styles */
+
+.emergency-page {
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+/* Emergency Alert */
+.emergency-alert {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  padding: 1rem 0;
+  position: fixed;
+  top: 70px;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+}
+
+.alert-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.alert-icon {
+  font-size: 2rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.alert-content strong {
+  display: block;
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
+.alert-content p {
+  font-size: 0.9rem;
+  opacity: 0.95;
+  margin: 0;
+}
+
+/* Hero Section */
+.emergency-hero {
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  padding: 10rem 0 5rem;
+  margin-top: 70px;
+  color: white;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.emergency-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.back-btn {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateX(-5px);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.emergency-hero h1 {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+}
+
+.emergency-hero p {
+  font-size: 1.4rem;
+  opacity: 0.95;
+}
+
+/* Emergency Contacts */
+.emergency-contacts {
+  padding: 5rem 0 3rem;
+}
+
+.emergency-contacts h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  color: #1e293b;
+  margin-bottom: 3rem;
+  font-weight: 700;
+}
+
+.contacts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.contact-card {
+  background: white;
+  padding: 2.5rem 2rem;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  border: 2px solid transparent;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.contact-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(220, 38, 38, 0.15);
+  border-color: #ef4444;
+}
+
+.contact-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+}
+
+.contact-card h3 {
+  font-size: 1.4rem;
+  color: #1e293b;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.contact-number {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #dc2626;
+  margin: 1.5rem 0;
+  font-family: 'Courier New', monospace;
+}
+
+.contact-card p {
+  color: #64748b;
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+}
+
+.btn-call,
+.btn-email {
+  display: inline-block;
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  color: white;
+  padding: 0.9rem 2rem;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+}
+
+.btn-call:hover,
+.btn-email:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
+}
+
+/* Emergency Types */
+.emergency-types {
+  padding: 3rem 0;
+}
+
+.emergency-types h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  color: #1e293b;
+  margin-bottom: 3rem;
+  font-weight: 700;
+}
+
+.types-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 2rem;
+}
+
+.type-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  border: 2px solid rgba(0, 0, 0, 0.05);
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.type-card.urgent {
+  border-color: #fca5a5;
+  background: linear-gradient(135deg, #fff 0%, #fef2f2 100%);
+}
+
+.type-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+}
+
+.type-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.type-card h3 {
+  font-size: 1.3rem;
+  color: #1e293b;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+}
+
+.type-card p {
+  color: #64748b;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.type-action {
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.urgent-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: #dc2626;
+  color: white;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Safety Tips */
+.safety-tips {
+  padding: 3rem 0;
+}
+
+.safety-tips h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  color: #1e293b;
+  margin-bottom: 3rem;
+  font-weight: 700;
+}
+
+.tips-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 3rem;
+  border-radius: 20px;
+  color: white;
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.2);
+}
+
+.tips-icon {
+  font-size: 4rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.tips-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.tips-list li {
+  display: flex;
+  align-items: start;
+  gap: 1rem;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.tip-bullet {
+  background: rgba(255, 255, 255, 0.2);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+/* Official Numbers */
+.official-numbers {
+  padding: 3rem 0;
+}
+
+.official-numbers h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  color: #1e293b;
+  margin-bottom: 3rem;
+  font-weight: 700;
+}
+
+.official-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 2rem;
+}
+
+.official-card {
+  background: white;
+  padding: 2.5rem 2rem;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.official-card.police {
+  border-top: 4px solid #3b82f6;
+}
+
+.official-card.medical {
+  border-top: 4px solid #ef4444;
+}
+
+.official-card.fire {
+  border-top: 4px solid #f59e0b;
+}
+
+.official-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+.official-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.official-card h3 {
+  font-size: 1.3rem;
+  color: #1e293b;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.official-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 1.5rem 0;
+  font-family: 'Courier New', monospace;
+}
+
+.btn-official {
+  display: inline-block;
+  background: #1e293b;
+  color: white;
+  padding: 0.9rem 2.5rem;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-official:hover {
+  background: #0f172a;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(30, 41, 59, 0.3);
+}
+
+/* Confidentiality */
+.confidentiality {
+  padding: 3rem 0;
+}
+
+.confidentiality-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 3rem;
+  border-radius: 20px;
+  text-align: center;
+  border: 2px solid #e2e8f0;
+}
+
+.conf-icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+}
+
+.confidentiality-card h3 {
+  font-size: 1.8rem;
+  color: #1e293b;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.confidentiality-card p {
+  font-size: 1.1rem;
+  color: #64748b;
+  line-height: 1.8;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Location */
+.emergency-location {
+  padding: 3rem 0 5rem;
+}
+
+.emergency-location h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  color: #1e293b;
+  margin-bottom: 3rem;
+  font-weight: 700;
+}
+
+.location-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+}
+
+.location-info {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.location-info h3 {
+  font-size: 1.3rem;
+  color: #1e293b;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.location-info p {
+  color: #64748b;
+  line-height: 1.8;
+  font-size: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .emergency-alert {
+    top: 56px;
+  }
+
+  .alert-content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .emergency-hero {
+    padding: 7rem 0 3rem;
+  }
+
+  .back-btn {
+    top: 1rem;
+    left: 1rem;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+  }
+
+  .emergency-hero h1 {
+    font-size: 2.5rem;
+  }
+
+  .emergency-hero p {
+    font-size: 1.1rem;
+  }
+
+  .emergency-contacts h2,
+  .emergency-types h2,
+  .safety-tips h2,
+  .official-numbers h2,
+  .emergency-location h2 {
+    font-size: 2rem;
+  }
+
+  .contacts-grid,
+  .types-grid,
+  .official-grid,
+  .location-card {
+    grid-template-columns: 1fr;
+  }
+
+  .tips-card {
+    padding: 2rem;
+  }
+
+  .tips-list li {
+    font-size: 1rem;
+  }
+}

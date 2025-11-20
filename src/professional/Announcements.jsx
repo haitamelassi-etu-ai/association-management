@@ -37,7 +37,8 @@ function Announcements() {
 
   const handleLogout = () => {
     localStorage.removeItem('professionalUser')
-    navigate('/professional-login')
+    localStorage.removeItem('token')
+    navigate('/login')
   }
 
   const getTypeIcon = (type) => {

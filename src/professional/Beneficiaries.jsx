@@ -39,7 +39,8 @@ function Beneficiaries() {
 
   const handleLogout = () => {
     localStorage.removeItem('professionalUser')
-    navigate('/professional-login')
+    localStorage.removeItem('token')
+    navigate('/login')
   }
 
   const getSituationLabel = (situation) => {

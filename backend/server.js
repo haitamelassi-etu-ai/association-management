@@ -22,6 +22,10 @@ const chatRoutes = require('./routes/chat');
 const backupRoutes = require('./routes/backup');
 const mealsRoutes = require('./routes/meals');
 const advancedReportsRoutes = require('./routes/advancedReports');
+const medicationsRoutes = require('./routes/medications');
+const pharmacyRoutes = require('./routes/pharmacy');
+const exitLogsRoutes = require('./routes/exitLogs');
+const foodStockRoutes = require('./routes/foodStock');
 
 const app = express();
 const server = http.createServer(app);
@@ -29,24 +33,51 @@ const server = http.createServer(app);
 // CORS Origins - Dynamic based on environment
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [process.env.FRONTEND_URL]
-  : ['http://localhost:5173', 'http://localhost:5174', 'http://192.168.1.3:5173', 'http://192.168.1.3:5174'];
+  : ['http://localhost:5173', 'http://localhost:5174', 'http://192.168.1.3:5173', 'http://192.168.1.3:5174', 'http://192.168.1.31:5173', 'http://192.168.1.31:5174'];
+
+// CORS function to allow local network IPs
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Allow localhost and local network IPs (192.168.x.x, 10.x.x.x)
+    if (origin.match(/^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}):\d+$/)) {
+      return callback(null, true);
+    }
+    
+    // Allow production URL
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    }
+    
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
 
 // Socket.io setup
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (origin.match(/^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}):\d+$/)) {
+        return callback(null, true);
+      }
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        return callback(null, true);
+      }
+      callback(null, false);
+    },
     credentials: true,
     methods: ['GET', 'POST']
   }
 });
 
 // Middleware - CORS configuration for network access
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -63,6 +94,10 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/meals', mealsRoutes);
 app.use('/api/reports/advanced', advancedReportsRoutes);
+app.use('/api/medications', medicationsRoutes);
+app.use('/api/pharmacy', pharmacyRoutes);
+app.use('/api/exit-logs', exitLogsRoutes);
+app.use('/api/food-stock', foodStockRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

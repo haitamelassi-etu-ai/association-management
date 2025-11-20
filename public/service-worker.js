@@ -1,4 +1,5 @@
 const CACHE_NAME = 'adel-elouerif-v1';
+
 const urlsToCache = [
   '/',
   '/index.html',

@@ -1,8 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import emailjs from '@emailjs/browser'
 import '../App.css'
 
 function HomePage() {
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
     nom: '',
     email: '',
@@ -12,7 +14,33 @@ function HomePage() {
   const [formSubmitted, setFormSubmitted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [lastScrollY, setLastScrollY] = useState(0)
+  const [headerVisible, setHeaderVisible] = useState(true)
   const formRef = useRef()
+
+  // Handle scroll for sticky header and auto-hide
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      
+      // Add scrolled class after 50px
+      setIsScrolled(currentScrollY > 50)
+      
+      // Auto-hide on scroll down, show on scroll up
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setHeaderVisible(false) // Scrolling down
+      } else {
+        setHeaderVisible(true) // Scrolling up
+      }
+      
+      setLastScrollY(currentScrollY)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [lastScrollY])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -58,27 +86,45 @@ function HomePage() {
   return (
     <>
       {/* Header / Navigation */}
-      <header className="header">
+      <header className={`header ${isScrolled ? 'scrolled' : ''} ${headerVisible ? 'visible' : 'hidden'}`}>
         <div className="header-content">
           <a href="#accueil" className="logo-container">
             <img src="/images/logo.png" alt="Logo Adel Elouerif" className="logo-image" />
           </a>
           
-          <nav className="nav">
-            <a href="#accueil" className="nav-link">Accueil</a>
-            <a href="#a-propos" className="nav-link">À propos</a>
-            <a href="#services" className="nav-link">Services</a>
-            <a href="#aider" className="nav-link">Aider</a>
-            <a href="#galerie" className="nav-link">Actualités</a>
-            <a href="#contact" className="nav-link">Contact</a>
-          </nav>
+          {/* Hamburger Menu Button */}
+          <button 
+            className="mobile-menu-btn"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
           
-          <div className="header-actions">
-            <button className="btn-don-header">Faire un Don</button>
-            <button className="btn-urgence">Urgence</button>
+          <nav className={`nav ${isMenuOpen ? 'mobile-open' : ''}`}>
+            <a href="#accueil" className="nav-link" onClick={() => setIsMenuOpen(false)}>Accueil</a>
+            <a href="#a-propos" className="nav-link" onClick={() => setIsMenuOpen(false)}>À propos</a>
+            <a href="#services" className="nav-link" onClick={() => setIsMenuOpen(false)}>Services</a>
+            <a href="#aider" className="nav-link" onClick={() => setIsMenuOpen(false)}>Aider</a>
+            <a href="#galerie" className="nav-link" onClick={() => setIsMenuOpen(false)}>Actualités</a>
+            <a href="#contact" className="nav-link" onClick={() => setIsMenuOpen(false)}>Contact</a>
+          </nav>
+
+          <div className="header-image-container">
+            <img src="/images/المبادرة.png" alt="المبادرة" className="header-initiative-image" />
           </div>
         </div>
       </header>
+
+      {/* Mobile Menu Overlay */}
+      {isMenuOpen && (
+        <div 
+          className="mobile-overlay" 
+          onClick={() => setIsMenuOpen(false)}
+        />
+      )}
 
       {/* Section Accueil / Hero */}
       <section id="accueil" className="hero-section" style={{

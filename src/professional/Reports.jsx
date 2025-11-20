@@ -129,7 +129,8 @@ function Reports() {
 
   const handleLogout = () => {
     localStorage.removeItem('professionalUser')
-    navigate('/professional-login')
+    localStorage.removeItem('token')
+    navigate('/login')
   }
 
   if (!user) {
