@@ -1,5 +1,5 @@
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+// Load heavy PDF libraries dynamically to avoid bundling them into the main chunk
+// They will be imported at runtime only when the user requests a PDF export
 
 // Add Arabic font support
 const addArabicFont = (doc) => {
@@ -18,6 +18,10 @@ const formatDate = (date) => {
 
 // Generate Beneficiaries Report
 export const generateBeneficiariesReport = async (beneficiaries, analytics) => {
+  const [{ default: jsPDF }, _autoTable] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable')
+  ])
   const doc = new jsPDF();
   
   // Header
@@ -122,6 +126,10 @@ export const generateBeneficiariesReport = async (beneficiaries, analytics) => {
 
 // Generate Monthly Report
 export const generateMonthlyReport = async (analytics, beneficiaries, announcements) => {
+  const [{ default: jsPDF }, _autoTable] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable')
+  ])
   const doc = new jsPDF();
   const now = new Date();
   const monthName = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
@@ -273,6 +281,10 @@ export const generateMonthlyReport = async (analytics, beneficiaries, announceme
 
 // Generate Attendance Report
 export const generateAttendanceReport = async (attendanceData, startDate, endDate) => {
+  const [{ default: jsPDF }, _autoTable] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable')
+  ])
   const doc = new jsPDF();
   
   // Header
