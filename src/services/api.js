@@ -13,8 +13,8 @@ const getAPIBaseURL = () => {
     return 'http://localhost:5000'
   }
   
-  // Third priority: use same domain (Vercel deployment)
-  return window.location.origin
+  // Third priority: production Railway backend
+  return 'https://association-management-production-f922.up.railway.app'
 }
 
 const API_BASE_URL = getAPIBaseURL()
