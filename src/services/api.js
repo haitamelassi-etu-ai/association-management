@@ -1,18 +1,31 @@
 import axios from 'axios'
 
 // API Base URL - Use environment variable in production
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:5000'
-    : 'https://association-management.onrender.com')
+const getAPIBaseURL = () => {
+  // First priority: environment variable
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+  
+  // Second priority: check if running locally
+  const hostname = window.location.hostname
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:5000'
+  }
+  
+  // Third priority: production default
+  return 'https://association-management.onrender.com'
+}
 
+const API_BASE_URL = getAPIBaseURL()
 const API_URL = `${API_BASE_URL}/api`
 
 console.log('🔧 API Configuration:', { 
   hostname: window.location.hostname, 
   API_BASE_URL,
   API_URL,
-  env: import.meta.env.VITE_API_URL 
+  env: import.meta.env.VITE_API_URL,
+  mode: import.meta.env.MODE
 })
 
 // Socket.io URL export for chat
