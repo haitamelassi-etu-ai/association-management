@@ -1,0 +1,251 @@
+.filter-buttons-announcements {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+/* Announcements Container */
+.announcements-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.announcement-card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid;
+  transition: all 0.3s;
+}
+
+.announcement-card:hover {
+  transform: translateX(5px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.announcement-card.urgent {
+  border-left-color: #dc2626;
+  background: linear-gradient(to right, #fef2f2 0%, white 10%);
+}
+
+.announcement-card.info {
+  border-left-color: #3b82f6;
+  background: linear-gradient(to right, #eff6ff 0%, white 10%);
+}
+
+.announcement-card.tache {
+  border-left-color: #f59e0b;
+  background: linear-gradient(to right, #fffbeb 0%, white 10%);
+}
+
+.announcement-card.evenement {
+  border-left-color: #8b5cf6;
+  background: linear-gradient(to right, #f5f3ff 0%, white 10%);
+}
+
+/* Announcement Header */
+.announcement-header-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.announcement-type-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.announcement-meta {
+  flex: 1;
+}
+
+.announcement-type-label {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.announcement-time {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.announcement-priority {
+  margin-left: auto;
+}
+
+.priority-badge {
+  padding: 0.375rem 0.875rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.priority-high {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.priority-medium {
+  background: #fed7aa;
+  color: #ea580c;
+}
+
+.priority-low {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.btn-delete-announcement {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #fef2f2;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.5rem;
+}
+
+.btn-delete-announcement:hover {
+  background: #fee2e2;
+  transform: scale(1.1);
+}
+
+/* Announcement Body */
+.announcement-body {
+  margin-bottom: 1rem;
+}
+
+.announcement-body h3 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.25rem;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.announcement-body p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+/* Announcement Footer */
+.announcement-footer-card {
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.announcement-author {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.author-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.author-name {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+
+.author-role {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.15rem;
+}
+
+/* Form Styles */
+.form-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filter-buttons-announcements {
+    flex-direction: column;
+  }
+
+  .filter-btn {
+    text-align: center;
+  }
+
+  .announcement-header-card {
+    flex-wrap: wrap;
+  }
+
+  .announcement-type-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+
+  .announcement-priority {
+    order: 4;
+    width: 100%;
+    margin-top: 0.5rem;
+    margin-left: 0;
+  }
+
+  .priority-badge {
+    display: inline-block;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .announcement-card {
+    padding: 1rem;
+  }
+
+  .announcement-body h3 {
+    font-size: 1.1rem;
+  }
+
+  .announcement-body p {
+    font-size: 0.9rem;
+  }
+}

@@ -1,0 +1,133 @@
+.language-switcher {
+  position: relative;
+}
+
+.lang-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--card-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--text-color);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.lang-button:hover {
+  background: var(--hover-bg);
+  border-color: var(--primary-color);
+}
+
+.lang-flag {
+  font-size: 1.2rem;
+}
+
+.lang-code {
+  font-weight: 600;
+}
+
+.lang-button i {
+  font-size: 0.7rem;
+  transition: transform 0.3s ease;
+}
+
+.language-switcher:hover .lang-button i {
+  transform: rotate(180deg);
+}
+
+.lang-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: var(--card-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  min-width: 180px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.language-switcher:hover .lang-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--text-color);
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.lang-option:hover {
+  background: var(--hover-bg);
+}
+
+.lang-option:first-child {
+  border-radius: 6px 6px 0 0;
+}
+
+.lang-option:last-child {
+  border-radius: 0 0 6px 6px;
+}
+
+.lang-option.active {
+  background: var(--primary-color);
+  color: white;
+}
+
+.lang-option.active:hover {
+  background: var(--secondary-color);
+}
+
+.lang-name {
+  flex: 1;
+}
+
+.lang-option .fa-check {
+  color: white;
+  font-size: 0.9rem;
+}
+
+/* RTL Support */
+[dir="rtl"] .lang-dropdown {
+  right: auto;
+  left: 0;
+}
+
+[dir="rtl"] .lang-option {
+  text-align: right;
+}
+
+/* Animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.language-switcher:hover .lang-dropdown {
+  animation: slideDown 0.3s ease;
+}

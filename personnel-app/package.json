@@ -1,0 +1,57 @@
+{
+  "name": "personnel-app",
+  "version": "1.0.0",
+  "description": "تطبيق إدارة الموظفين - نظام محلي مستقل",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"electron .\"",
+    "build": "vite build",
+    "electron": "electron .",
+    "electron:dev": "electron . --dev",
+    "start": "electron .",
+    "package": "electron-builder build --win --publish never",
+    "package:dir": "electron-builder --dir"
+  },
+  "keywords": ["electron", "personnel", "attendance", "local-app"],
+  "author": "Your Name",
+  "license": "MIT",
+  "build": {
+    "appId": "com.personnel.app",
+    "productName": "لوحة الموظفين",
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": ["portable"],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "dependencies": {
+    "sql.js": "^1.10.3",
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^8.2.2",
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.1",
+    "react-i18next": "^14.0.0",
+    "i18next": "^23.7.16",
+    "vite": "^5.0.8"
+  }
+}
