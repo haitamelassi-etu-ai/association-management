@@ -13,8 +13,8 @@ const getAPIBaseURL = () => {
     return 'http://localhost:5000'
   }
   
-  // Third priority: production default
-  return 'https://association-management.onrender.com'
+  // Third priority: use same domain (Vercel deployment)
+  return window.location.origin
 }
 
 const API_BASE_URL = getAPIBaseURL()
