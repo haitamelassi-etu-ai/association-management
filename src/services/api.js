@@ -2,19 +2,14 @@ import axios from 'axios'
 
 // API Base URL - Use environment variable in production
 const getAPIBaseURL = () => {
-  // First priority: environment variable
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL
-  }
-  
-  // Second priority: check if running locally
+  // Check if running locally
   const hostname = window.location.hostname
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return 'http://localhost:5000'
   }
   
-  // Third priority: production Railway backend
-  return 'https://association-management-production-f922.up.railway.app'
+  // Use same origin for Vercel (Frontend + Backend together)
+  return window.location.origin
 }
 
 const API_BASE_URL = getAPIBaseURL()
@@ -22,10 +17,9 @@ const API_URL = `${API_BASE_URL}/api`
 
 console.log('🔧 API Configuration:', { 
   hostname: window.location.hostname, 
+  origin: window.location.origin,
   API_BASE_URL,
-  API_URL,
-  env: import.meta.env.VITE_API_URL,
-  mode: import.meta.env.MODE
+  API_URL
 })
 
 // Socket.io URL export for chat
