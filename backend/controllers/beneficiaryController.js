@@ -1,4 +1,5 @@
 const Beneficiary = require('../models/Beneficiary');
+const { notifyAdmins, notificationTemplates } = require('../utils/notificationHelper');
 
 // @desc    Get all beneficiaries
 // @route   GET /api/beneficiaries
@@ -83,6 +84,14 @@ exports.createBeneficiary = async (req, res) => {
     req.body.createdBy = req.user._id;
     
     const beneficiary = await Beneficiary.create(req.body);
+
+    // Notify admins
+    const beneficiaryName = `${beneficiary.prenom || ''} ${beneficiary.nom || ''}`.trim();
+    await notifyAdmins({
+      ...notificationTemplates.newBeneficiary(beneficiaryName),
+      metadata: { beneficiaryId: beneficiary._id, action: 'create' },
+      createdBy: req.user._id
+    });
     
     res.status(201).json({
       success: true,
@@ -102,7 +111,9 @@ exports.createBeneficiary = async (req, res) => {
 exports.updateBeneficiary = async (req, res) => {
   try {
     req.body.updatedBy = req.user._id;
-    
+
+    const before = await Beneficiary.findById(req.params.id).select('statut nom prenom');
+
     const beneficiary = await Beneficiary.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -113,6 +124,16 @@ exports.updateBeneficiary = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Bénéficiaire non trouvé'
+      });
+    }
+
+    // Notify admins when beneficiary exits the structure
+    if (before?.statut !== 'sorti' && beneficiary.statut === 'sorti') {
+      const beneficiaryName = `${beneficiary.prenom || ''} ${beneficiary.nom || ''}`.trim();
+      await notifyAdmins({
+        ...notificationTemplates.beneficiaryExit(beneficiaryName),
+        metadata: { beneficiaryId: beneficiary._id, action: 'exit' },
+        createdBy: req.user._id
       });
     }
     

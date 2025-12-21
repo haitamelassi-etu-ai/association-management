@@ -34,7 +34,7 @@ function ProfessionalLogin() {
       localStorage.setItem('professionalUser', JSON.stringify(userData))
       console.log('💾 Données sauvegardées:', userData)
       
-      navigate('/professional-dashboard')
+      navigate('/professional/dashboard')
     } catch (err) {
       console.error('❌ Erreur de connexion:', err)
       setError(err.response?.data?.message || 'Email ou mot de passe incorrect')
@@ -50,7 +50,7 @@ function ProfessionalLogin() {
             <img src="/images/logo.png" alt="Logo" className="login-logo" />
             <h1>Portail Professionnel</h1>
           </div>
-          <p>Association Adel Elouerif</p>
+          <p>Association Al Dhil Al Warif</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form-pro">
@@ -85,7 +85,7 @@ function ProfessionalLogin() {
           </button>
 
           <div className="login-hint-pro">
-            <small>💡 Demo: admin@adelelouerif.org / admin123</small>
+            <small>💡 Utilisez votre compte professionnel</small>
           </div>
         </form>
 

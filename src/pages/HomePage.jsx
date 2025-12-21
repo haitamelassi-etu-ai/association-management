@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import emailjs from '@emailjs/browser'
 import '../App.css'
+import { SITE_INFO, COPYRIGHT_YEAR } from '../config/siteInfo'
+import { API_URL } from '../utils/api'
 
 function HomePage() {
   const navigate = useNavigate()
@@ -18,7 +20,91 @@ function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [lastScrollY, setLastScrollY] = useState(0)
   const [headerVisible, setHeaderVisible] = useState(true)
+  const [newsItems, setNewsItems] = useState([])
   const formRef = useRef()
+
+  const defaultNews = [
+    {
+      _id: 'default-1',
+      date: '2025-11-10',
+      title: "Grande collecte d'hiver réussie !",
+      description:
+        "Grâce à votre générosité, nous avons collecté plus de 2000 vêtements chauds et 500 couvertures pour affronter l'hiver.",
+      image: '/images/actualites/news-1.jpg',
+    },
+    {
+      _id: 'default-2',
+      date: '2025-10-25',
+      title: 'Nouveau partenariat avec des entreprises locales',
+      description:
+        "5 entreprises s'engagent à nos côtés pour faciliter l'insertion professionnelle de nos bénéficiaires.",
+      image: '/images/actualites/news-2.jpg',
+    },
+    {
+      _id: 'default-3',
+      date: '2025-10-15',
+      title: 'Témoignage : Le parcours de Mohamed',
+      description:
+        "Hébergé pendant 4 mois, Mohamed a retrouvé un emploi stable et un logement. Découvrez son parcours inspirant.",
+      image: '/images/actualites/news-3.jpg',
+    },
+    {
+      _id: 'default-4',
+      date: '2025-10-05',
+      title: 'Journée portes ouvertes : un succès !',
+      description:
+        "Plus de 200 visiteurs sont venus découvrir nos installations et rencontrer notre équipe lors de cette belle journée de partage.",
+      image: '/images/actualites/news-4.jpg',
+    },
+    {
+      _id: 'default-5',
+      date: '2025-09-20',
+      title: 'Lancement des ateliers cuisine solidaire',
+      description:
+        "Nos nouveaux ateliers cuisine permettent aux bénéficiaires d'apprendre et de partager autour de repas conviviaux.",
+      image: '/images/actualites/news-5.jpg',
+    },
+    {
+      _id: 'default-6',
+      date: '2025-09-10',
+      title: 'Nouvelle formation en rénovation',
+      description:
+        '12 bénéficiaires suivent actuellement une formation qualifiante en rénovation du bâtiment avec nos partenaires.',
+      image: '/images/actualites/news-6.jpg',
+    },
+  ]
+
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        const res = await fetch(`${API_URL}/news?limit=6`, { method: 'GET' })
+        if (!res.ok) throw new Error('Bad response')
+        const json = await res.json()
+        const data = Array.isArray(json?.data) ? json.data : []
+        if (!mounted) return
+        setNewsItems(data.length ? data : defaultNews)
+      } catch (e) {
+        if (!mounted) return
+        setNewsItems(defaultNews)
+      }
+    }
+
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const formatDateFr = (value) => {
+    try {
+      const d = new Date(value)
+      if (Number.isNaN(d.getTime())) return ''
+      return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    } catch {
+      return ''
+    }
+  }
 
   // Handle scroll for sticky header and auto-hide
   useEffect(() => {
@@ -78,7 +164,7 @@ function HomePage() {
     })
     .catch((error) => {
       console.error('Error sending email:', error.text)
-      setError('حدث خطأ في إرسال الرسالة. حاول مرة أخرى.')
+      setError("Une erreur s'est produite lors de l'envoi. Veuillez réessayer.")
       setIsLoading(false)
     })
   }
@@ -89,7 +175,7 @@ function HomePage() {
       <header className={`header ${isScrolled ? 'scrolled' : ''} ${headerVisible ? 'visible' : 'hidden'}`}>
         <div className="header-content">
           <a href="#accueil" className="logo-container">
-            <img src="/images/logo.png" alt="Logo Adel Elouerif" className="logo-image" />
+            <img src="/images/logo.png" alt={`Logo ${SITE_INFO.name}`} className="logo-image" />
           </a>
           
           {/* Hamburger Menu Button */}
@@ -139,21 +225,21 @@ function HomePage() {
             Ensemble, offrons une seconde chance à ceux qui en ont le plus besoin
           </p>
           <div className="hero-buttons">
-            <button className="btn-primary">Faire un Don</button>
-            <button className="btn-secondary">Devenir Bénévole</button>
+            <button className="btn-primary" onClick={() => navigate('/don')}>Faire un Don</button>
+            <button className="btn-secondary" onClick={() => window.location.hash = '#contact'}>Nous contacter</button>
           </div>
           <div className="hero-stats">
             <div className="stat-item">
-              <span className="stat-number">500+</span>
-              <span className="stat-label">Personnes aidées</span>
+              <span className="stat-number">{SITE_INFO.stats.beneficiariesCurrent}+</span>
+              <span className="stat-label">Bénéficiaires (actuellement)</span>
             </div>
             <div className="stat-item">
-              <span className="stat-number">15</span>
-              <span className="stat-label">Années d'expérience</span>
+              <span className="stat-number">{SITE_INFO.stats.foundedYear}</span>
+              <span className="stat-label">Centre créé</span>
             </div>
             <div className="stat-item">
-              <span className="stat-number">100+</span>
-              <span className="stat-label">Bénévoles actifs</span>
+              <span className="stat-number">{SITE_INFO.location.city}</span>
+              <span className="stat-label">{SITE_INFO.location.country}</span>
             </div>
           </div>
         </div>
@@ -164,7 +250,7 @@ function HomePage() {
         <div className="container">
           <h2 className="section-title">À Propos de Notre Association</h2>
           <p className="section-subtitle">
-            Depuis 15 ans au service des plus démunis
+            {SITE_INFO.story.summaryFr}
           </p>
           
           <div className="about-content">
@@ -173,15 +259,12 @@ function HomePage() {
                 <div className="about-icon">📖</div>
                 <h3>Notre Histoire</h3>
                 <p>
-                  Fondée en 2010, l'association Adel Elouerif est née d'une conviction profonde : 
-                  <strong> chaque être humain mérite un toit et une chance de reconstruire sa vie</strong>. 
-                  Partant d'un petit centre d'hébergement de 20 places, nous sommes aujourd'hui une 
-                  référence régionale dans l'accompagnement des personnes sans abri, avec plus de 
-                  <strong> 500 personnes aidées chaque année</strong>.
+                  <strong>{SITE_INFO.name}</strong> est active à <strong>{SITE_INFO.location.city}</strong>.
+                  {` `}
+                  {SITE_INFO.story.establishedContextFr}
                 </p>
                 <p>
-                  Notre parcours est marqué par un engagement constant auprès des plus vulnérables, 
-                  dans le respect de leur dignité et de leurs choix de vie.
+                  Président : {SITE_INFO.leadership.president}.
                 </p>
               </div>
               
@@ -251,20 +334,20 @@ function HomePage() {
             
             <div className="stats-banner">
               <div className="stat-box">
-                <div className="stat-number">500+</div>
-                <div className="stat-text">Personnes aidées par an</div>
+                <div className="stat-number">{SITE_INFO.stats.beneficiariesMin}+</div>
+                <div className="stat-text">Plus de 100 bénéficiaires</div>
               </div>
               <div className="stat-box">
-                <div className="stat-number">15</div>
-                <div className="stat-text">Années d'expérience</div>
+                <div className="stat-number">{SITE_INFO.stats.beneficiariesCurrent}</div>
+                <div className="stat-text">Jusqu'à 160 bénéficiaires</div>
               </div>
               <div className="stat-box">
-                <div className="stat-number">100+</div>
-                <div className="stat-text">Bénévoles engagés</div>
+                <div className="stat-number">{SITE_INFO.stats.foundedYear}</div>
+                <div className="stat-text">Mise en place du centre</div>
               </div>
               <div className="stat-box">
                 <div className="stat-number">24/7</div>
-                <div className="stat-text">Accueil d'urgence</div>
+                <div className="stat-text">Hébergement & prise en charge</div>
               </div>
             </div>
           </div>
@@ -281,55 +364,50 @@ function HomePage() {
           <div className="services-grid">
             <div className="service-card">
               <div className="service-icon">🏡</div>
-              <h3>Hébergement d'Urgence</h3>
+              <h3>Hébergement & prise en charge</h3>
               <p>
-                Accueil 24h/24 avec chambres sécurisées, lits confortables et installations 
-                sanitaires complètes. Hébergement temporaire jusqu'à 6 mois.
+                Centres d'hébergement pour les personnes en situation de rue, avec prise en charge et repas,
+                notamment en période hivernale.
               </p>
             </div>
             
             <div className="service-card">
               <div className="service-icon">🍽️</div>
-              <h3>Distribution Alimentaire</h3>
+              <h3>Repas & aide alimentaire</h3>
               <p>
-                Trois repas chauds et équilibrés par jour. Distribution de colis alimentaires 
-                et vêtements selon les besoins.
+                Distribution de repas et de dons en nature (denrées, vêtements) selon les besoins.
               </p>
             </div>
             
             <div className="service-card">
               <div className="service-icon">📋</div>
-              <h3>Orientation Sociale</h3>
+              <h3>Accompagnement social & psychologique</h3>
               <p>
-                Aide aux démarches administratives : papiers d'identité, droits sociaux, 
-                allocations, carte vitale, etc.
+                Aide sociale et accompagnement pour les personnes en situation de grande précarité.
               </p>
             </div>
             
             <div className="service-card">
               <div className="service-icon">💼</div>
-              <h3>Réinsertion Professionnelle</h3>
+              <h3>Partenariats INDH</h3>
               <p>
-                Ateliers CV, formations professionnelles, mise en relation avec employeurs, 
-                coaching emploi personnalisé.
+                Actions de solidarité menées avec l'INDH et les autorités locales.
               </p>
             </div>
             
             <div className="service-card">
               <div className="service-icon">🏥</div>
-              <h3>Assistance Psychologique</h3>
+              <h3>Lutte contre l'addiction</h3>
               <p>
-                Soutien psychologique avec psychologues bénévoles, groupes de parole, 
-                écoute active et orientation vers les services spécialisés.
+                Sensibilisation et accompagnement social pour faire face aux problèmes d'addiction.
               </p>
             </div>
             
             <div className="service-card">
               <div className="service-icon">👨‍👩‍👧</div>
-              <h3>Accompagnement Familial</h3>
+              <h3>Accompagnement humain</h3>
               <p>
-                Accueil des familles, médiation familiale, aide à la parentalité et 
-                reconstruction des liens sociaux.
+                Orientation et mise en relation avec les services et institutions partenaires.
               </p>
             </div>
           </div>
@@ -349,15 +427,15 @@ function HomePage() {
               <div className="help-icon">💰</div>
               <h3>Faire un Don</h3>
               <p>
-                Vos dons financiers nous permettent de maintenir nos services et d'accueillir 
-                plus de personnes dans le besoin. Chaque euro compte.
+                Nous privilégions les <strong>dons en nature</strong> (repas, denrées, vêtements...).
+                Contactez-nous pour organiser le dépôt.
               </p>
               <ul className="help-list">
-                <li>✓ Don ponctuel ou mensuel</li>
-                <li>✓ Déduction fiscale 66%</li>
-                <li>✓ Paiement sécurisé</li>
+                <li>✓ Repas</li>
+                <li>✓ Vêtements & couvertures</li>
+                <li>✓ Denrées & hygiène</li>
               </ul>
-              <button className="btn-primary">Je Fais un Don</button>
+              <button className="btn-primary" onClick={() => navigate('/don')}>Je fais un don</button>
             </div>
             
             <div className="help-card">
@@ -415,95 +493,26 @@ function HomePage() {
         <div className="container">
           <h2 className="section-title">Actualités & Événements</h2>
           <div className="news-grid">
-            <article className="news-card">
-              <div className="news-image">
-                <img src="/images/actualites/news-1.jpg" alt="Grande collecte d'hiver" onError={(e) => e.target.parentElement.innerHTML = '📸'} />
-              </div>
-              <div className="news-content">
-                <span className="news-date">10 Novembre 2025</span>
-                <h3>Grande collecte d'hiver réussie !</h3>
-                <p>
-                  Grâce à votre générosité, nous avons collecté plus de 2000 vêtements chauds 
-                  et 500 couvertures pour affronter l'hiver.
-                </p>
-                <a href="#" className="news-link">Lire la suite →</a>
-              </div>
-            </article>
-            
-            <article className="news-card">
-              <div className="news-image">
-                <img src="/images/actualites/news-2.jpg" alt="Partenariat entreprises" onError={(e) => e.target.parentElement.innerHTML = '📸'} />
-              </div>
-              <div className="news-content">
-                <span className="news-date">25 Octobre 2025</span>
-                <h3>Nouveau partenariat avec des entreprises locales</h3>
-                <p>
-                  5 entreprises s'engagent à nos côtés pour faciliter l'insertion professionnelle 
-                  de nos bénéficiaires.
-                </p>
-                <a href="#" className="news-link">Lire la suite →</a>
-              </div>
-            </article>
-            
-            <article className="news-card">
-              <div className="news-image">
-                <img src="/images/actualites/news-3.jpg" alt="Témoignage Mohamed" onError={(e) => e.target.parentElement.innerHTML = '📸'} />
-              </div>
-              <div className="news-content">
-                <span className="news-date">15 Octobre 2025</span>
-                <h3>Témoignage : Le parcours de Mohamed</h3>
-                <p>
-                  Hébergé pendant 4 mois, Mohamed a retrouvé un emploi stable et un logement. 
-                  Découvrez son parcours inspirant.
-                </p>
-                <a href="#" className="news-link">Lire la suite →</a>
-              </div>
-            </article>
-
-            <article className="news-card">
-              <div className="news-image">
-                <img src="/images/actualites/news-4.jpg" alt="Journée portes ouvertes" onError={(e) => e.target.parentElement.innerHTML = '📸'} />
-              </div>
-              <div className="news-content">
-                <span className="news-date">5 Octobre 2025</span>
-                <h3>Journée portes ouvertes : un succès !</h3>
-                <p>
-                  Plus de 200 visiteurs sont venus découvrir nos installations et rencontrer 
-                  notre équipe lors de cette belle journée de partage.
-                </p>
-                <a href="#" className="news-link">Lire la suite →</a>
-              </div>
-            </article>
-
-            <article className="news-card">
-              <div className="news-image">
-                <img src="/images/actualites/news-5.jpg" alt="Atelier cuisine" onError={(e) => e.target.parentElement.innerHTML = '📸'} />
-              </div>
-              <div className="news-content">
-                <span className="news-date">20 Septembre 2025</span>
-                <h3>Lancement des ateliers cuisine solidaire</h3>
-                <p>
-                  Nos nouveaux ateliers cuisine permettent aux bénéficiaires d'apprendre 
-                  et de partager autour de repas conviviaux.
-                </p>
-                <a href="#" className="news-link">Lire la suite →</a>
-              </div>
-            </article>
-
-            <article className="news-card">
-              <div className="news-image">
-                <img src="/images/actualites/news-6.jpg" alt="Formation professionnelle" onError={(e) => e.target.parentElement.innerHTML = '📸'} />
-              </div>
-              <div className="news-content">
-                <span className="news-date">10 Septembre 2025</span>
-                <h3>Nouvelle formation en rénovation</h3>
-                <p>
-                  12 bénéficiaires suivent actuellement une formation qualifiante en 
-                  rénovation du bâtiment avec nos partenaires.
-                </p>
-                <a href="#" className="news-link">Lire la suite →</a>
-              </div>
-            </article>
+            {newsItems.map((item) => (
+              <article key={item._id || item.id} className="news-card">
+                <div className="news-image">
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      onError={(e) => (e.currentTarget.parentElement.innerHTML = '📸')}
+                    />
+                  ) : (
+                    '📸'
+                  )}
+                </div>
+                <div className="news-content">
+                  <span className="news-date">{formatDateFr(item.date)}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </section>
@@ -519,8 +528,10 @@ function HomePage() {
               <div className="contact-item">
                 <span className="contact-icon">📞</span>
                 <div>
-                  <strong>Téléphone d'urgence</strong>
-                  <p>0800 123 456 (gratuit, 24h/24)</p>
+                  <strong>{SITE_INFO.contact.emergencyPhoneLabel}</strong>
+                  <p>
+                    {SITE_INFO.contact.emergencyPhone} {SITE_INFO.contact.emergencyPhoneNote}
+                  </p>
                 </div>
               </div>
               
@@ -528,7 +539,7 @@ function HomePage() {
                 <span className="contact-icon">📧</span>
                 <div>
                   <strong>Email</strong>
-                  <p>contact@adelelouerif.org</p>
+                  <p>{SITE_INFO.contact.email}</p>
                 </div>
               </div>
               
@@ -536,25 +547,33 @@ function HomePage() {
                 <span className="contact-icon">📍</span>
                 <div>
                   <strong>Adresse</strong>
-                  <p>123 Rue de la Solidarité<br/>75000 Paris, France</p>
+                  <p>
+                    {SITE_INFO.contact.addressLines[0]}
+                    <br />
+                    {SITE_INFO.contact.addressLines[1]}
+                  </p>
                 </div>
               </div>
               
               <div className="contact-item">
                 <span className="contact-icon">🕐</span>
                 <div>
-                  <strong>Horaires d'accueil</strong>
-                  <p>Lundi - Dimanche : 24h/24<br/>Permanence téléphonique 24h/24</p>
+                  <strong>{SITE_INFO.contact.hoursTitle}</strong>
+                  <p>
+                    {SITE_INFO.contact.hoursLines[0]}
+                    <br />
+                    {SITE_INFO.contact.hoursLines[1]}
+                  </p>
                 </div>
               </div>
               
               <div className="social-links">
                 <h3>Suivez-nous</h3>
                 <div className="social-icons">
-                  <a href="#" className="social-icon" aria-label="Facebook">📘</a>
-                  <a href="#" className="social-icon" aria-label="Twitter">🐦</a>
-                  <a href="#" className="social-icon" aria-label="Instagram">📷</a>
-                  <a href="#" className="social-icon" aria-label="LinkedIn">💼</a>
+                  <a href={SITE_INFO.social.facebook} className="social-icon" aria-label="Facebook">📘</a>
+                  <a href={SITE_INFO.social.twitter} className="social-icon" aria-label="Twitter">🐦</a>
+                  <a href={SITE_INFO.social.instagram} className="social-icon" aria-label="Instagram">📷</a>
+                  <a href={SITE_INFO.social.linkedin} className="social-icon" aria-label="LinkedIn">💼</a>
                 </div>
               </div>
               
@@ -622,7 +641,7 @@ function HomePage() {
                 </div>
                 
                 <button type="submit" className="btn-primary btn-submit" disabled={isLoading}>
-                  {isLoading ? '⏳ جاري الإرسال...' : 'Envoyer le message'}
+                  {isLoading ? '⏳ Envoi...' : 'Envoyer le message'}
                 </button>
                 
                 {error && (
@@ -647,8 +666,8 @@ function HomePage() {
         <div className="container">
           <div className="footer-content">
             <div className="footer-section">
-              <h4>Association Adel Elouerif</h4>
-              <p>Un toit, une chance, une dignité</p>
+              <h4>{SITE_INFO.name}</h4>
+              <p>{SITE_INFO.heroTagline}</p>
               <p className="footer-mission">
                 Depuis 15 ans, nous œuvrons pour offrir hébergement, 
                 dignité et espoir aux personnes sans abri.
@@ -668,9 +687,9 @@ function HomePage() {
             
             <div className="footer-section">
               <h4>Contact</h4>
-              <p>📞 0800 123 456</p>
-              <p>📧 contact@adelelouerif.org</p>
-              <p>📍 Paris, France</p>
+              <p>📞 {SITE_INFO.contact.emergencyPhone}</p>
+              <p>📧 {SITE_INFO.contact.email}</p>
+              <p>📍 {SITE_INFO.contact.addressLines[SITE_INFO.contact.addressLines.length - 1]}</p>
             </div>
             
             <div className="footer-section">
@@ -684,7 +703,7 @@ function HomePage() {
           </div>
           
           <div className="footer-bottom">
-            <p>© 2025 Association Adel Elouerif - Tous droits réservés</p>
+            <p>© {COPYRIGHT_YEAR} {SITE_INFO.name} - Tous droits réservés</p>
             <div className="footer-legal">
               <a href="#">Mentions légales</a>
               <a href="#">Politique de confidentialité</a>

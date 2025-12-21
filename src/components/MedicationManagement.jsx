@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API_URL } from '../utils/api';
 import './MedicationManagement.css';
+import ProfessionalLayout from '../professional/ProfessionalLayout';
 
 const MedicationManagement = () => {
   const { t } = useTranslation();
@@ -311,6 +312,7 @@ const MedicationManagement = () => {
   };
 
   return (
+    <ProfessionalLayout noPadding>
     <div className="medication-management">
       <div className="medication-header">
         <div>
@@ -807,6 +809,7 @@ const MedicationManagement = () => {
         </div>
       )}
     </div>
+    </ProfessionalLayout>
   );
 };
 

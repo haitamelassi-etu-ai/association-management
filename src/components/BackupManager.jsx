@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './BackupManager.css';
 import { API_URL } from '../utils/api';
+import ProfessionalLayout from '../professional/ProfessionalLayout';
 
 const BackupManager = () => {
   const { t } = useTranslation();
@@ -81,6 +82,7 @@ const BackupManager = () => {
   }, []);
 
   return (
+    <ProfessionalLayout noPadding>
     <div className="backup-manager">
       <div className="backup-header">
         <h2>💾 {t('backup.title')}</h2>
@@ -189,6 +191,7 @@ const BackupManager = () => {
         </ul>
       </div>
     </div>
+    </ProfessionalLayout>
   );
 };
 

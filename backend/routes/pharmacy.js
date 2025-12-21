@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const PharmacyStock = require('../models/PharmacyStock');
 const { protect, authorize } = require('../middleware/auth');
+const { notifyAdmins } = require('../utils/notificationHelper');
 
 // Get all pharmacy medications
 router.get('/', protect, async (req, res) => {
@@ -154,6 +155,16 @@ router.post('/', protect, authorize('admin', 'staff'), async (req, res) => {
       createdBy: req.user.id
     });
 
+    await notifyAdmins({
+      type: 'success',
+      title: 'Pharmacie - Nouveau Médicament',
+      message: `${medication.medicationName || 'Médicament'} ajouté (stock: ${medication.stock})`,
+      icon: '💊',
+      link: '/professional/pharmacy',
+      metadata: { pharmacyStockId: medication._id, action: 'create' },
+      createdBy: req.user.id
+    });
+
     res.status(201).json({
       success: true,
       message: 'Médicament ajouté au stock',
@@ -196,6 +207,8 @@ router.patch('/:id/stock', protect, authorize('admin', 'staff'), async (req, res
       });
     }
 
+    const beforeStock = medication.stock;
+
     if (operation === 'add') {
       medication.stock += stock;
     } else if (operation === 'subtract') {
@@ -205,6 +218,17 @@ router.patch('/:id/stock', protect, authorize('admin', 'staff'), async (req, res
     }
 
     await medication.save();
+
+    const delta = medication.stock - beforeStock;
+    await notifyAdmins({
+      type: delta >= 0 ? 'success' : 'warning',
+      title: 'Pharmacie - Stock Mis à Jour',
+      message: `${medication.medicationName || 'Médicament'}: ${beforeStock} → ${medication.stock}`,
+      icon: delta >= 0 ? '➕' : '➖',
+      link: '/professional/pharmacy',
+      metadata: { pharmacyStockId: medication._id, action: 'stock_update', operation, delta },
+      createdBy: req.user.id
+    });
 
     res.json({
       success: true,

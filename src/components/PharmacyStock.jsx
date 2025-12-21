@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API_URL } from '../utils/api';
 import './PharmacyStock.css';
+import ProfessionalLayout from '../professional/ProfessionalLayout';
 
 const PharmacyStock = () => {
   const { t } = useTranslation();
@@ -235,6 +236,7 @@ const PharmacyStock = () => {
   };
 
   return (
+    <ProfessionalLayout noPadding>
     <div className="pharmacy-stock">
       <div className="pharmacy-header">
         <div>
@@ -559,6 +561,7 @@ const PharmacyStock = () => {
         </div>
       )}
     </div>
+    </ProfessionalLayout>
   );
 };
 

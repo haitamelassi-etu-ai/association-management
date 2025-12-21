@@ -3,6 +3,15 @@
  * Automatically detects the current hostname and uses it with port 5000
  */
 export const getApiUrl = () => {
+  // In dev, allow overriding the API base URL (useful for phone testing on LAN)
+  // Example: VITE_API_URL=http://192.168.x.x:5000
+  if (import.meta?.env?.DEV && import.meta?.env?.VITE_API_URL) {
+    const raw = String(import.meta.env.VITE_API_URL).trim();
+    if (raw) {
+      return raw.replace(/\/+$/, '');
+    }
+  }
+
   const hostname = window.location.hostname;
 
   // Local development

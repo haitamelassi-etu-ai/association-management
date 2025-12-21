@@ -26,6 +26,7 @@ const medicationsRoutes = require('./routes/medications');
 const pharmacyRoutes = require('./routes/pharmacy');
 const exitLogsRoutes = require('./routes/exitLogs');
 const foodStockRoutes = require('./routes/foodStock');
+const newsRoutes = require('./routes/news');
 
 const app = express();
 const server = http.createServer(app);
@@ -98,6 +99,7 @@ app.use('/api/medications', medicationsRoutes);
 app.use('/api/pharmacy', pharmacyRoutes);
 app.use('/api/exit-logs', exitLogsRoutes);
 app.use('/api/food-stock', foodStockRoutes);
+app.use('/api/news', newsRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

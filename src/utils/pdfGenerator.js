@@ -1,6 +1,8 @@
 // Load heavy PDF libraries dynamically to avoid bundling them into the main chunk
 // They will be imported at runtime only when the user requests a PDF export
 
+import { SITE_INFO } from '../config/siteInfo'
+
 // Add Arabic font support
 const addArabicFont = (doc) => {
   // For now, we'll use a basic font. You can add custom Arabic font later
@@ -27,7 +29,7 @@ export const generateBeneficiariesReport = async (beneficiaries, analytics) => {
   // Header
   doc.setFontSize(20);
   doc.setTextColor(44, 62, 80);
-  doc.text('Association Adel Elouerif', 105, 20, { align: 'center' });
+  doc.text(SITE_INFO.name, 105, 20, { align: 'center' });
   
   doc.setFontSize(16);
   doc.setTextColor(52, 152, 219);
@@ -137,7 +139,7 @@ export const generateMonthlyReport = async (analytics, beneficiaries, announceme
   // Header
   doc.setFontSize(20);
   doc.setTextColor(44, 62, 80);
-  doc.text('Association Adel Elouerif', 105, 20, { align: 'center' });
+  doc.text(SITE_INFO.name, 105, 20, { align: 'center' });
   
   doc.setFontSize(16);
   doc.setTextColor(52, 152, 219);
@@ -290,7 +292,7 @@ export const generateAttendanceReport = async (attendanceData, startDate, endDat
   // Header
   doc.setFontSize(20);
   doc.setTextColor(44, 62, 80);
-  doc.text('Association Adel Elouerif', 105, 20, { align: 'center' });
+  doc.text(SITE_INFO.name, 105, 20, { align: 'center' });
   
   doc.setFontSize(16);
   doc.setTextColor(52, 152, 219);

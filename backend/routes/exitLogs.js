@@ -3,6 +3,7 @@ const router = express.Router();
 const ExitLog = require('../models/ExitLog');
 const Beneficiary = require('../models/Beneficiary');
 const { protect, authorize } = require('../middleware/auth');
+const { notifyAdmins, notificationTemplates } = require('../utils/notificationHelper');
 
 // Get all exit logs with filters
 router.get('/', protect, async (req, res) => {
@@ -197,6 +198,15 @@ router.post('/', protect, authorize('admin', 'staff'), async (req, res) => {
     await exitLog.populate('beneficiary', 'nom prenom cin photoUrl');
     await exitLog.populate('authorizedBy', 'name email');
 
+    // Notify admins
+    const beneficiaryName = `${beneficiary?.prenom || exitLog.beneficiary?.prenom || ''} ${beneficiary?.nom || exitLog.beneficiary?.nom || ''}`.trim();
+    await notifyAdmins({
+      ...notificationTemplates.beneficiaryExit(beneficiaryName),
+      link: '/professional/exit-tracking',
+      metadata: { exitLogId: exitLog._id, beneficiaryId },
+      createdBy: req.user.id
+    });
+
     console.log('✅ Exit log created:', exitLog._id);
 
     res.status(201).json({
@@ -240,6 +250,18 @@ router.patch('/:id/return', protect, authorize('admin', 'staff'), async (req, re
     await exitLog.populate('beneficiary', 'nom prenom cin photoUrl');
     await exitLog.populate('authorizedBy', 'name email');
     await exitLog.populate('returnRecordedBy', 'name email');
+
+    // Notify admins
+    const beneficiaryName = `${exitLog.beneficiary?.prenom || ''} ${exitLog.beneficiary?.nom || ''}`.trim();
+    await notifyAdmins({
+      type: 'success',
+      title: 'Retour de Bénéficiaire',
+      message: `${beneficiaryName} est revenu à la structure`,
+      icon: '✅',
+      link: '/professional/exit-tracking',
+      metadata: { exitLogId: exitLog._id, beneficiaryId: exitLog.beneficiary?._id },
+      createdBy: req.user.id
+    });
 
     console.log('✅ Return recorded:', exitLog.status);
 

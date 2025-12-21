@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../utils/api';
 import './FoodStockManagement.css';
+import ProfessionalLayout from '../professional/ProfessionalLayout';
 
 const FoodStockManagement = () => {
   const navigate = useNavigate();
@@ -232,10 +233,15 @@ const FoodStockManagement = () => {
   };
 
   if (loading) {
-    return <div className="loading-spinner">Chargement...</div>;
+    return (
+      <ProfessionalLayout noPadding>
+        <div className="loading-spinner">Chargement...</div>
+      </ProfessionalLayout>
+    );
   }
 
   return (
+    <ProfessionalLayout noPadding>
     <div className="food-stock-container">
       <div className="food-stock-header">
         <h1>🏪 Gestion du Stock Alimentaire</h1>
@@ -818,6 +824,7 @@ const FoodStockManagement = () => {
         </div>
       )}
     </div>
+    </ProfessionalLayout>
   );
 };
 

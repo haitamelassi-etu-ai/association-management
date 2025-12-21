@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../services/api';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ProfessionalSidebar } from './SharedSidebar';
+import './ProfessionalDashboard.css';
 import './AnalyticsDashboard.css';
-
-const API_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:5000/api'
-  : `http://${window.location.hostname}:5000/api`;
 
 const COLORS = ['#3498db', '#e74c3c', '#f39c12', '#2ecc71', '#9b59b6', '#1abc9c'];
 
 function AnalyticsDashboard() {
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,9 +23,21 @@ function AnalyticsDashboard() {
       navigate('/professional-login');
       return;
     }
+
+    try {
+      setUser(JSON.parse(professionalUser));
+    } catch {
+      // ignore parse errors
+    }
     
     fetchAnalytics();
   }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('professionalUser');
+    localStorage.removeItem('token');
+    navigate('/professional-login');
+  };
 
   const fetchAnalytics = async () => {
     try {
@@ -43,7 +54,7 @@ function AnalyticsDashboard() {
       const userData = JSON.parse(professionalUser);
       const token = userData.token;
       
-      const response = await axios.get(`${API_URL}/analytics/dashboard`, {
+      const response = await apiClient.get('/analytics/dashboard', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -58,57 +69,54 @@ function AnalyticsDashboard() {
     }
   };
 
+  let content = null;
+
   if (loading) {
-    return (
+    content = (
       <div className="analytics-loading">
         <div className="spinner"></div>
         <p>Chargement des statistiques...</p>
       </div>
     );
-  }
-
-  if (error) {
-    return (
+  } else if (error) {
+    content = (
       <div className="analytics-error">
         <p>{error}</p>
         <button onClick={fetchAnalytics} className="btn-retry">Réessayer</button>
       </div>
     );
-  }
+  } else if (analytics) {
+    const { beneficiaries, staff } = analytics;
 
-  if (!analytics) return null;
+    // Prepare data for age distribution pie chart
+    const ageData = beneficiaries.byAge.map(item => ({
+      name: item._id,
+      value: item.count
+    }));
 
-  const { beneficiaries, staff } = analytics;
+    // Prepare data for monthly trend
+    const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+    const monthlyData = beneficiaries.monthlyStats.map(stat => {
+      const [year, month] = stat.month.split('-');
+      return {
+        name: `${monthNames[parseInt(month) - 1]} ${year}`,
+        Nouveaux: stat.count
+      };
+    });
 
-  // Prepare data for age distribution pie chart
-  const ageData = beneficiaries.byAge.map(item => ({
-    name: item._id,
-    value: item.count
-  }));
+    const statusData = [
+      { name: 'Actifs', value: beneficiaries.active, color: '#2ecc71' },
+      { name: 'Sortis', value: beneficiaries.exited, color: '#e74c3c' }
+    ];
 
-  // Prepare data for monthly trend
-  const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-  const monthlyData = beneficiaries.monthlyStats.map(stat => {
-    const [year, month] = stat.month.split('-');
-    return {
-      name: `${monthNames[parseInt(month) - 1]} ${year}`,
-      Nouveaux: stat.count
-    };
-  });
-
-  const statusData = [
-    { name: 'Actifs', value: beneficiaries.active, color: '#2ecc71' },
-    { name: 'Sortis', value: beneficiaries.exited, color: '#e74c3c' }
-  ];
-
-  return (
-    <div className="analytics-dashboard">
-      <div className="analytics-header">
-        <h1>📊 Tableau de Bord Analytique</h1>
-        <button onClick={fetchAnalytics} className="btn-refresh">
-          🔄 Actualiser
-        </button>
-      </div>
+    content = (
+      <div className="analytics-dashboard">
+        <div className="analytics-header">
+          <h1>📊 Tableau de Bord Analytique</h1>
+          <button onClick={fetchAnalytics} className="btn-refresh">
+            🔄 Actualiser
+          </button>
+        </div>
 
       {/* Key Metrics Cards */}
       <div className="metrics-grid">
@@ -275,25 +283,35 @@ function AnalyticsDashboard() {
         </div>
       </div>
 
-      {/* Quick Stats Footer */}
-      <div className="quick-stats">
-        <div className="stat-item">
-          <span className="stat-label">Capacité d'accueil:</span>
-          <span className="stat-value">{((beneficiaries.active / 50) * 100).toFixed(0)}%</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-label">Moyenne nouveaux/mois:</span>
-          <span className="stat-value">
-            {(beneficiaries.monthlyStats.reduce((sum, m) => sum + m.count, 0) / beneficiaries.monthlyStats.length).toFixed(1)}
-          </span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-label">Croissance:</span>
-          <span className={`stat-value ${beneficiaries.growthRate >= 0 ? 'positive' : 'negative'}`}>
-            {beneficiaries.growthRate >= 0 ? '+' : ''}{beneficiaries.growthRate}%
-          </span>
+        {/* Quick Stats Footer */}
+        <div className="quick-stats">
+          <div className="stat-item">
+            <span className="stat-label">Capacité d'accueil:</span>
+            <span className="stat-value">{((beneficiaries.active / 50) * 100).toFixed(0)}%</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Moyenne nouveaux/mois:</span>
+            <span className="stat-value">
+              {(beneficiaries.monthlyStats.reduce((sum, m) => sum + m.count, 0) / beneficiaries.monthlyStats.length).toFixed(1)}
+            </span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Croissance:</span>
+            <span className={`stat-value ${beneficiaries.growthRate >= 0 ? 'positive' : 'negative'}`}>
+              {beneficiaries.growthRate >= 0 ? '+' : ''}{beneficiaries.growthRate}%
+            </span>
+          </div>
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="professional-dashboard">
+      <ProfessionalSidebar user={user} onLogout={handleLogout} />
+      <main className="dashboard-main">
+        {content}
+      </main>
     </div>
   );
 }

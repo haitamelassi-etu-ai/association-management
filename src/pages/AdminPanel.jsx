@@ -1,99 +1,201 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import './AdminPanel.css'
+import { API_URL } from '../utils/api'
 
 function AdminPanel({ onLogout }) {
   const [news, setNews] = useState([])
+  const [loadingNews, setLoadingNews] = useState(false)
+  const [newsError, setNewsError] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [newArticle, setNewArticle] = useState({
     date: '',
     title: '',
     description: '',
-    image: ''
+    image: '',
+    isActive: true,
   })
   const navigate = useNavigate()
 
-  // تحميل الأخبار من localStorage
-  useEffect(() => {
-    const savedNews = localStorage.getItem('newsArticles')
-    if (savedNews) {
-      setNews(JSON.parse(savedNews))
-    } else {
-      // الأخبار الافتراضية
-      const defaultNews = [
-        {
-          id: 1,
-          date: '10 Novembre 2025',
-          title: 'Grande collecte d\'hiver réussie !',
-          description: 'Grâce à votre générosité, nous avons collecté plus de 2000 vêtements chauds et 500 couvertures pour affronter l\'hiver.',
-          image: '/images/actualites/news-1.jpg'
-        },
-        {
-          id: 2,
-          date: '25 Octobre 2025',
-          title: 'Nouveau partenariat avec des entreprises locales',
-          description: '5 entreprises s\'engagent à nos côtés pour faciliter l\'insertion professionnelle de nos bénéficiaires.',
-          image: '/images/actualites/news-2.jpg'
-        },
-        {
-          id: 3,
-          date: '15 Octobre 2025',
-          title: 'Témoignage : Le parcours de Mohamed',
-          description: 'Hébergé pendant 4 mois, Mohamed a retrouvé un emploi stable et un logement. Découvrez son parcours inspirant.',
-          image: '/images/actualites/news-3.jpg'
-        },
-        {
-          id: 4,
-          date: '5 Octobre 2025',
-          title: 'Journée portes ouvertes : un succès !',
-          description: 'Plus de 200 visiteurs sont venus découvrir nos installations et rencontrer notre équipe lors de cette belle journée de partage.',
-          image: '/images/actualites/news-4.jpg'
-        },
-        {
-          id: 5,
-          date: '20 Septembre 2025',
-          title: 'Lancement des ateliers cuisine solidaire',
-          description: 'Nos nouveaux ateliers cuisine permettent aux bénéficiaires d\'apprendre et de partager autour de repas conviviaux.',
-          image: '/images/actualites/news-5.jpg'
-        },
-        {
-          id: 6,
-          date: '10 Septembre 2025',
-          title: 'Nouvelle formation en rénovation',
-          description: '12 bénéficiaires suivent actuellement une formation qualifiante en rénovation du bâtiment avec nos partenaires.',
-          image: '/images/actualites/news-6.jpg'
-        }
-      ]
-      setNews(defaultNews)
-      localStorage.setItem('newsArticles', JSON.stringify(defaultNews))
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('professionalToken')
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+
+  const formatDateFr = (value) => {
+    try {
+      const d = new Date(value)
+      if (Number.isNaN(d.getTime())) return ''
+      return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    } catch {
+      return ''
     }
+  }
+
+  const toDateInputValue = (value) => {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return ''
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }
+
+  const loadNews = async () => {
+    setLoadingNews(true)
+    setNewsError('')
+    try {
+      const res = await axios.get(`${API_URL}/news/all`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        timeout: 15000,
+      })
+      setNews(res.data?.data || [])
+    } catch (err) {
+      console.error('❌ Failed to load news:', err)
+      setNewsError('Impossible de charger les actualités. Vérifiez la connexion.')
+      setNews([])
+    } finally {
+      setLoadingNews(false)
+    }
+  }
+
+  useEffect(() => {
+    loadNews()
   }, [])
 
-  // حفظ الأخبار في localStorage
-  const saveNews = (updatedNews) => {
-    setNews(updatedNews)
-    localStorage.setItem('newsArticles', JSON.stringify(updatedNews))
+  const fileToCompressedDataUrl = (file, { maxWidth = 1280, maxHeight = 1280, quality = 0.75 } = {}) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onerror = () => reject(new Error('Lecture du fichier impossible'))
+      reader.onload = () => {
+        const img = new Image()
+        img.onerror = () => reject(new Error('Image invalide'))
+        img.onload = () => {
+          let { width, height } = img
+          const ratio = Math.min(maxWidth / width, maxHeight / height, 1)
+          width = Math.round(width * ratio)
+          height = Math.round(height * ratio)
+
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+
+          const dataUrl = canvas.toDataURL('image/jpeg', quality)
+          resolve(dataUrl)
+        }
+        img.src = reader.result
+      }
+      reader.readAsDataURL(file)
+    })
   }
 
   // حذف خبر
   const handleDelete = (id) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا الخبر؟')) {
-      const updatedNews = news.filter(article => article.id !== id)
-      saveNews(updatedNews)
+    if (!window.confirm('Supprimer cette actualité ?')) return
+
+    ;(async () => {
+      try {
+        await axios.delete(`${API_URL}/news/${id}`, {
+          headers: {
+            ...getAuthHeaders(),
+          },
+          timeout: 15000,
+        })
+        await loadNews()
+      } catch (err) {
+        console.error('❌ Delete failed:', err)
+        window.alert('Suppression impossible. Réessayez.')
+      }
+    })()
+  }
+
+  const resetForm = () => {
+    setEditingId(null)
+    setNewArticle({ date: '', title: '', description: '', image: '', isActive: true })
+  }
+
+  const startCreate = () => {
+    resetForm()
+    setShowAddForm(true)
+  }
+
+  const startEdit = (article) => {
+    setEditingId(article._id)
+    setNewArticle({
+      date: toDateInputValue(article.date),
+      title: article.title || '',
+      description: article.description || '',
+      image: article.image || '',
+      isActive: typeof article.isActive === 'boolean' ? article.isActive : true,
+    })
+    setShowAddForm(true)
+  }
+
+  const handleSubmitArticle = async (e) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setNewsError('')
+
+    try {
+      const payload = {
+        title: newArticle.title,
+        description: newArticle.description,
+        date: newArticle.date,
+        image: newArticle.image,
+        isActive: newArticle.isActive,
+      }
+
+      if (editingId) {
+        await axios.put(`${API_URL}/news/${editingId}`, payload, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
+          timeout: 20000,
+        })
+      } else {
+        await axios.post(`${API_URL}/news`, payload, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
+          timeout: 20000,
+        })
+      }
+
+      await loadNews()
+      setShowAddForm(false)
+      resetForm()
+    } catch (err) {
+      console.error('❌ Save failed:', err)
+      setNewsError('Enregistrement impossible. Vérifiez les champs et réessayez.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  // إضافة خبر جديد
-  const handleAddArticle = (e) => {
-    e.preventDefault()
-    const newId = news.length > 0 ? Math.max(...news.map(n => n.id)) + 1 : 1
-    const article = {
-      id: newId,
-      ...newArticle
+  const handlePickImage = async (file) => {
+    if (!file) return
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file)
+      // Keep it safely below serverless JSON limit (10mb). Data URL is ~33% overhead.
+      if (dataUrl.length > 3_000_000) {
+        window.alert('Image trop grande après compression. Choisissez une image plus petite.')
+        return
+      }
+      setNewArticle((prev) => ({ ...prev, image: dataUrl }))
+    } catch (err) {
+      console.error(err)
+      window.alert("Impossible de traiter l'image.")
     }
-    saveNews([article, ...news])
-    setNewArticle({ date: '', title: '', description: '', image: '' })
-    setShowAddForm(false)
   }
 
   const handleLogout = () => {
@@ -106,11 +208,11 @@ function AdminPanel({ onLogout }) {
       <div className="admin-header">
         <div className="admin-header-content">
           <div>
-            <h1>🎛️ لوحة التحكم - Admin Panel</h1>
-            <p>إدارة الأخبار والإعلانات</p>
+            <h1>🎛️ Panneau d'administration</h1>
+            <p>Gestion des actualités</p>
           </div>
           <button onClick={handleLogout} className="btn-logout">
-            🚪 خروج
+            🚪 Déconnexion
           </button>
         </div>
       </div>
@@ -147,96 +249,164 @@ function AdminPanel({ onLogout }) {
       <div className="admin-content">
         <div className="admin-actions">
           <button 
-            onClick={() => setShowAddForm(!showAddForm)} 
+            onClick={() => (showAddForm ? (setShowAddForm(false), resetForm()) : startCreate())} 
             className="btn-add-news"
           >
-            {showAddForm ? '❌ إلغاء' : '➕ إضافة خبر جديد'}
+            {showAddForm ? '❌ Annuler' : '➕ Ajouter une actualité'}
           </button>
           <div className="stats">
-            <span className="stat-badge">📰 {news.length} خبر</span>
+            <span className="stat-badge">📰 {news.length} actualité(s)</span>
           </div>
         </div>
 
+        {newsError && (
+          <div className="error-message" style={{ marginBottom: '12px' }}>
+            ⚠️ {newsError}
+          </div>
+        )}
+
         {showAddForm && (
           <div className="add-form-container">
-            <h2>➕ إضافة خبر جديد</h2>
-            <form onSubmit={handleAddArticle} className="add-form">
+            <h2>{editingId ? '✏️ Modifier une actualité' : '➕ Ajouter une actualité'}</h2>
+            <form onSubmit={handleSubmitArticle} className="add-form">
               <div className="form-row">
                 <div className="form-group">
-                  <label>التاريخ</label>
+                  <label>Date</label>
                   <input
-                    type="text"
+                    type="date"
                     value={newArticle.date}
                     onChange={(e) => setNewArticle({...newArticle, date: e.target.value})}
-                    placeholder="10 Novembre 2025"
                     required
                   />
                 </div>
                 <div className="form-group">
-                  <label>رابط الصورة</label>
+                  <label>Image (URL optionnel)</label>
                   <input
                     type="text"
                     value={newArticle.image}
                     onChange={(e) => setNewArticle({...newArticle, image: e.target.value})}
-                    placeholder="/images/actualites/news-7.jpg"
-                    required
+                    placeholder="https://... (ou laissez vide si vous téléversez)"
                   />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Téléverser une image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => handlePickImage(e.target.files?.[0])}
+                  />
+                </div>
+
+                <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <label style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!newArticle.isActive}
+                      onChange={(e) => setNewArticle({ ...newArticle, isActive: e.target.checked })}
+                    />
+                    Publiée sur le site
+                  </label>
                 </div>
               </div>
               
               <div className="form-group">
-                <label>العنوان</label>
+                <label>Titre</label>
                 <input
                   type="text"
                   value={newArticle.title}
                   onChange={(e) => setNewArticle({...newArticle, title: e.target.value})}
-                  placeholder="عنوان الخبر"
+                  placeholder="Titre de l'actualité"
                   required
                 />
               </div>
               
               <div className="form-group">
-                <label>الوصف</label>
+                <label>Description</label>
                 <textarea
                   value={newArticle.description}
                   onChange={(e) => setNewArticle({...newArticle, description: e.target.value})}
-                  placeholder="وصف الخبر..."
+                  placeholder="Description..."
                   rows="4"
                   required
                 />
               </div>
+
+              {newArticle.image ? (
+                <div className="form-group">
+                  <label>Aperçu</label>
+                  <div style={{ maxWidth: '320px' }}>
+                    <img
+                      src={newArticle.image}
+                      alt="Aperçu"
+                      style={{ width: '100%', borderRadius: '10px' }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : null}
               
-              <button type="submit" className="btn-submit">
-                ✅ إضافة الخبر
+              <button type="submit" className="btn-submit" disabled={isSubmitting}>
+                {isSubmitting ? '⏳ Enregistrement...' : (editingId ? '✅ Mettre à jour' : '✅ Ajouter')}
               </button>
             </form>
           </div>
         )}
 
         <div className="news-list">
-          <h2>📰 الأخبار الحالية ({news.length})</h2>
-          {news.length === 0 ? (
+          <h2>📰 Actualités ({news.length})</h2>
+          {loadingNews ? (
+            <div className="empty-state"><p>Chargement...</p></div>
+          ) : news.length === 0 ? (
             <div className="empty-state">
-              <p>لا توجد أخبار حالياً</p>
+              <p>Aucune actualité pour le moment</p>
             </div>
           ) : (
             <div className="news-grid-admin">
               {news.map(article => (
-                <div key={article.id} className="news-item-admin">
+                <div key={article._id} className="news-item-admin">
                   <div className="news-image-admin">
-                    <img src={article.image} alt={article.title} />
+                    {article.image ? (
+                      <img
+                        src={article.image}
+                        alt={article.title}
+                        onError={(e) => (e.currentTarget.parentElement.innerHTML = '📸')}
+                      />
+                    ) : (
+                      '📸'
+                    )}
                   </div>
                   <div className="news-info">
-                    <span className="news-date-admin">{article.date}</span>
+                    <span className="news-date-admin">{formatDateFr(article.date)}</span>
                     <h3>{article.title}</h3>
                     <p>{article.description}</p>
+                    <p style={{ marginTop: '6px', fontSize: '12px', opacity: 0.8 }}>
+                      Statut : {article.isActive ? 'Publié' : 'Brouillon'}
+                    </p>
                   </div>
-                  <button 
-                    onClick={() => handleDelete(article.id)}
-                    className="btn-delete"
-                  >
-                    🗑️ حذف
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', padding: '0 14px 14px' }}>
+                    <button
+                      onClick={() => startEdit(article)}
+                      className="btn-submit"
+                      type="button"
+                      style={{ flex: 1 }}
+                    >
+                      ✏️ Modifier
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(article._id)}
+                      className="btn-delete"
+                      type="button"
+                      style={{ flex: 1 }}
+                    >
+                      🗑️ Supprimer
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

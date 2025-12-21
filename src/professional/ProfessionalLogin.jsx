@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authAPI } from '../services/api'
 import './ProfessionalLogin.css'
+import { SITE_INFO } from '../config/siteInfo'
 
 function ProfessionalLogin() {
   const [credentials, setCredentials] = useState({
@@ -42,10 +43,10 @@ function ProfessionalLogin() {
       <div className="login-container-pro">
         <div className="login-header-pro">
           <div className="logo-section">
-            <img src="/images/logo.png" alt="Logo" className="login-logo" />
+            <img src="/images/logo.png" alt={`Logo ${SITE_INFO.name}`} className="login-logo" />
             <h1>Portail Professionnel</h1>
           </div>
-          <p>Association Adel Elouerif</p>
+          <p>{SITE_INFO.name}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form-pro">
@@ -80,7 +81,7 @@ function ProfessionalLogin() {
           </button>
 
           <div className="login-hint-pro">
-            <small>💡 Demo: admin@adelelouerif.org / admin123</small>
+            <small>💡 Utilisez votre compte professionnel</small>
           </div>
         </form>
 

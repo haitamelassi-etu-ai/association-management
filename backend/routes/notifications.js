@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Notification = require('../models/Notification');
-const { protect } = require('../middleware/auth');
+const { protect, authorize } = require('../middleware/auth');
 
 // @desc    Get notifications for logged-in user
 // @route   GET /api/notifications
@@ -134,7 +134,7 @@ router.delete('/:id', protect, async (req, res) => {
 // @desc    Create notification (Admin/Manager only)
 // @route   POST /api/notifications
 // @access  Private (Admin, Manager)
-router.post('/', protect, async (req, res) => {
+router.post('/', protect, authorize('admin', 'responsable'), async (req, res) => {
   try {
     const { recipient, type, title, message, icon, link, metadata } = req.body;
     

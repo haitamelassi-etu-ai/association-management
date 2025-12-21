@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { beneficiariesAPI, attendanceAPI, announcementsAPI } from '../services/api'
-import axios from 'axios'
+import apiClient, { beneficiariesAPI, attendanceAPI, announcementsAPI } from '../services/api'
+import { ProfessionalSidebar } from './SharedSidebar'
+import './ProfessionalDashboard.css'
 import './Reports.css'
-
-const API_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:5000/api'
-  : `http://${window.location.hostname}:5000/api`;
 
 function Reports() {
   const [user, setUser] = useState(null)
@@ -129,7 +126,7 @@ function Reports() {
   const handleLogout = () => {
     localStorage.removeItem('professionalUser')
     localStorage.removeItem('token')
-    navigate('/login')
+    navigate('/professional-login')
   }
 
   if (!user) {
@@ -162,7 +159,7 @@ function Reports() {
       const token = userData.token
       
       // Fetch analytics data
-      const analyticsResponse = await axios.get(`${API_URL}/analytics/dashboard`, {
+      const analyticsResponse = await apiClient.get('/analytics/dashboard', {
         headers: { Authorization: `Bearer ${token}` }
       })
       
@@ -192,52 +189,7 @@ function Reports() {
   return (
     <div className="professional-dashboard">
       {/* Sidebar */}
-      <aside className="dashboard-sidebar">
-        <div className="sidebar-header">
-          <img src="/images/logo.png" alt="Logo" className="sidebar-logo" />
-          <h2>Portail Pro</h2>
-        </div>
-
-        <nav className="sidebar-nav">
-          <a href="/professional/dashboard" className="nav-item">
-            <span className="nav-icon">📊</span>
-            <span>Dashboard</span>
-          </a>
-          <a href="/professional/analytics" className="nav-item">
-            <span className="nav-icon">📈</span>
-            <span>Analytique</span>
-          </a>
-          <a href="/professional/beneficiaries" className="nav-item">
-            <span className="nav-icon">👥</span>
-            <span>Bénéficiaires</span>
-          </a>
-          <a href="/professional/attendance" className="nav-item">
-            <span className="nav-icon">⏰</span>
-            <span>Pointage</span>
-          </a>
-          <a href="/professional/announcements" className="nav-item">
-            <span className="nav-icon">📢</span>
-            <span>Annonces</span>
-          </a>
-          <a href="/professional/reports" className="nav-item active">
-            <span className="nav-icon">📋</span>
-            <span>Rapports</span>
-          </a>
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="user-info">
-            <div className="user-avatar">{user?.nom?.[0] || 'U'}{user?.prenom?.[0] || 'U'}</div>
-            <div className="user-details">
-              <div className="user-name">{user?.prenom || ''} {user?.nom || ''}</div>
-              <div className="user-role">{user?.role || 'Staff'}</div>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="btn-logout-sidebar">
-            🚪 Déconnexion
-          </button>
-        </div>
-      </aside>
+      <ProfessionalSidebar user={user} onLogout={handleLogout} />
 
       {/* Main Content */}
       <main className="dashboard-main">

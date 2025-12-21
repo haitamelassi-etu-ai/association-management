@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './ExitTracking.css';
 import { API_URL } from '../utils/api';
+import ProfessionalLayout from '../professional/ProfessionalLayout';
 
 const ExitTracking = () => {
   const [exitLogs, setExitLogs] = useState([]);
@@ -332,16 +333,19 @@ const ExitTracking = () => {
 
   if (loading) {
     return (
-      <div className="exit-tracking-container">
-        <div className="loading-spinner">
-          <div className="spinner"></div>
-          <p>Chargement des données...</p>
+      <ProfessionalLayout noPadding>
+        <div className="exit-tracking-container">
+          <div className="loading-spinner">
+            <div className="spinner"></div>
+            <p>Chargement des données...</p>
+          </div>
         </div>
-      </div>
+      </ProfessionalLayout>
     );
   }
 
   return (
+    <ProfessionalLayout noPadding>
     <div className="exit-tracking-container">
       {/* Offline/Online Indicator */}
       {!isOnline && (
@@ -832,6 +836,7 @@ const ExitTracking = () => {
         </div>
       )}
     </div>
+    </ProfessionalLayout>
   );
 };
 

@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import './AdvancedReports.css';
 import { API_URL } from '../utils/api';
+import ProfessionalLayout from '../professional/ProfessionalLayout';
 
 const AdvancedReports = () => {
   const { t } = useTranslation();
@@ -129,6 +130,7 @@ const AdvancedReports = () => {
   };
 
   return (
+    <ProfessionalLayout noPadding>
     <div className="advanced-reports">
       <div className="reports-header">
         <div>
@@ -447,6 +449,7 @@ const AdvancedReports = () => {
         </div>
       )}
     </div>
+    </ProfessionalLayout>
   );
 };
 

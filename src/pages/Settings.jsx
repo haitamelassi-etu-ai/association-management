@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Settings.css'
+import { SITE_INFO } from '../config/siteInfo'
 
 function Settings() {
   const [settings, setSettings] = useState({
-    siteName: 'Association Adel Elouerif',
+    siteName: SITE_INFO.name,
     logoUrl: '/images/logo.png',
     primaryColor: '#667eea',
     secondaryColor: '#764ba2',
@@ -12,7 +13,7 @@ function Settings() {
     smsNotifications: false,
     autoBackup: true,
     backupFrequency: 'daily',
-    maxBeneficiaries: 50,
+    maxBeneficiaries: SITE_INFO.stats?.beneficiariesCurrent || 160,
     language: 'fr',
     timezone: 'Africa/Casablanca'
   })
@@ -48,7 +49,7 @@ function Settings() {
   const handleReset = () => {
     if (window.confirm('Êtes-vous sûr de vouloir réinitialiser tous les paramètres ?')) {
       const defaultSettings = {
-        siteName: 'Association Adel Elouerif',
+        siteName: SITE_INFO.name,
         logoUrl: '/images/logo.png',
         primaryColor: '#667eea',
         secondaryColor: '#764ba2',
@@ -56,7 +57,7 @@ function Settings() {
         smsNotifications: false,
         autoBackup: true,
         backupFrequency: 'daily',
-        maxBeneficiaries: 50,
+        maxBeneficiaries: SITE_INFO.stats?.beneficiariesCurrent || 160,
         language: 'fr',
         timezone: 'Africa/Casablanca'
       }

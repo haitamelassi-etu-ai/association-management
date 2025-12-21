@@ -20,6 +20,7 @@ const chatRoutes = require('../backend/routes/chat');
 const analyticsRoutes = require('../backend/routes/analytics');
 const advancedReportsRoutes = require('../backend/routes/advancedReports');
 const backupRoutes = require('../backend/routes/backup');
+const newsRoutes = require('../backend/routes/news');
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reports/advanced', advancedReportsRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/news', newsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

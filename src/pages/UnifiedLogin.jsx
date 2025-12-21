@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import './UnifiedLogin.css'
 import { API_URL } from '../utils/api'
+import { SITE_INFO } from '../config/siteInfo'
 
 function UnifiedLogin() {
   const [email, setEmail] = useState('')
@@ -84,9 +85,9 @@ function UnifiedLogin() {
               <div className="logo-ring"></div>
             </div>
           </div>
-          <h1>Association Adel Elouerif</h1>
-          <p className="subtitle">عدل الوريف</p>
-          <p className="tagline">Solidarité • Dignité • Espoir</p>
+          <h1>{SITE_INFO.name}</h1>
+          <p className="subtitle">{SITE_INFO.nameAr}</p>
+          <p className="tagline">{SITE_INFO.tagline}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">

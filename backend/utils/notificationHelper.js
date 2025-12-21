@@ -20,13 +20,45 @@ const createNotification = async (recipientId, data) => {
   }
 };
 
+// Create notification for all admins
+const notifyAdmins = async (data) => {
+  try {
+    const User = require('../models/User');
+    const admins = await User.find({
+      role: 'admin',
+      isActive: true,
+      status: 'active'
+    }).select('_id');
+
+    if (!admins.length) return true;
+
+    const notifications = admins.map(user => ({
+      recipient: user._id,
+      type: data.type || 'info',
+      title: data.title,
+      message: data.message,
+      icon: data.icon || '🔔',
+      link: data.link,
+      metadata: data.metadata,
+      createdBy: data.createdBy
+    }));
+
+    await Notification.insertMany(notifications);
+    return true;
+  } catch (error) {
+    console.error('Notify admins error:', error);
+    return false;
+  }
+};
+
 // Create notification for all staff
 const notifyAllStaff = async (data) => {
   try {
     const User = require('../models/User');
-    const staff = await User.find({ 
-      role: { $in: ['staff', 'manager', 'admin'] },
-      statut: 'actif'
+    const staff = await User.find({
+      role: { $in: ['staff', 'responsable', 'admin', 'manager'] },
+      isActive: true,
+      status: 'active'
     }).select('_id');
     
     const notifications = staff.map(user => ({
@@ -101,6 +133,7 @@ const notificationTemplates = {
 
 module.exports = {
   createNotification,
+  notifyAdmins,
   notifyAllStaff,
   notificationTemplates
 };

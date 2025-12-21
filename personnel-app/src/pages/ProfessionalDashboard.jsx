@@ -66,7 +66,7 @@ function ProfessionalDashboard() {
   const handleLogout = () => {
     localStorage.removeItem('professionalUser')
     localStorage.removeItem('token')
-    navigate('/login')
+    navigate('/professional-login')
   }
 
   if (!user) {

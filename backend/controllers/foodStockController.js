@@ -1,4 +1,5 @@
 const FoodStock = require('../models/FoodStock');
+const { notifyAdmins } = require('../utils/notificationHelper');
 
 // Obtenir tous les articles du stock
 exports.getAllStock = async (req, res) => {
@@ -83,6 +84,16 @@ exports.createStockItem = async (req, res) => {
     const item = new FoodStock(itemData);
     await item.save();
 
+    await notifyAdmins({
+      type: 'success',
+      title: 'Stock Alimentaire - Ajout',
+      message: `${item.nom || 'Article'} ajouté (${item.quantite} unités)`,
+      icon: '📦',
+      link: '/professional/food-stock',
+      metadata: { foodStockId: item._id, action: 'create' },
+      createdBy: req.user.id
+    });
+
     res.status(201).json(item);
   } catch (error) {
     console.error('Erreur lors de la création de l\'article:', error);
@@ -100,6 +111,7 @@ exports.updateStockItem = async (req, res) => {
     }
 
     const ancienneQuantite = item.quantite;
+    const nouvelleQuantite = req.body.quantite !== undefined ? Number(req.body.quantite) : undefined;
     
     // Mettre à jour les champs
     Object.keys(req.body).forEach(key => {
@@ -121,6 +133,19 @@ exports.updateStockItem = async (req, res) => {
     }
 
     await item.save();
+
+    if (nouvelleQuantite !== undefined && !Number.isNaN(nouvelleQuantite) && nouvelleQuantite !== ancienneQuantite) {
+      const diff = nouvelleQuantite - ancienneQuantite;
+      await notifyAdmins({
+        type: diff > 0 ? 'success' : 'warning',
+        title: 'Stock Alimentaire - Mise à jour',
+        message: `${item.nom || 'Article'}: ${ancienneQuantite} → ${nouvelleQuantite} unités`,
+        icon: diff > 0 ? '➕' : '➖',
+        link: '/professional/food-stock',
+        metadata: { foodStockId: item._id, action: diff > 0 ? 'increase' : 'decrease', diff },
+        createdBy: req.user.id
+      });
+    }
     res.json(item);
   } catch (error) {
     console.error('Erreur lors de la mise à jour de l\'article:', error);
@@ -147,6 +172,16 @@ exports.consommerStock = async (req, res) => {
 
     item.enregistrerConsommation(quantite, req.user.id, raison);
     await item.save();
+
+    await notifyAdmins({
+      type: 'info',
+      title: 'Stock Alimentaire - Consommation',
+      message: `${item.nom || 'Article'}: -${quantite} (reste ${item.quantite})`,
+      icon: '🍽️',
+      link: '/professional/food-stock',
+      metadata: { foodStockId: item._id, action: 'consume', quantite, raison },
+      createdBy: req.user.id
+    });
 
     res.json(item);
   } catch (error) {

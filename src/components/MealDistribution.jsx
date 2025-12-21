@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API_URL } from '../utils/api';
 import './MealDistribution.css';
+import ProfessionalLayout from '../professional/ProfessionalLayout';
 
 const MealDistribution = () => {
   const { t } = useTranslation();
@@ -260,6 +261,7 @@ const MealDistribution = () => {
   };
 
   return (
+    <ProfessionalLayout noPadding>
     <div className="meal-distribution">
       <div className="meal-header">
         <div>
@@ -546,6 +548,7 @@ const MealDistribution = () => {
         </div>
       )}
     </div>
+    </ProfessionalLayout>
   );
 };
 
