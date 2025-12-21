@@ -728,11 +728,6 @@ function HomePage() {
           </div>
         </div>
       </footer>
-
-      {/* Bouton Don Flottant */}
-      <button className="floating-don-btn" title="Faire un don">
-        💛 Don
-      </button>
     </>
   )
 }
