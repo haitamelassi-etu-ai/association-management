@@ -296,9 +296,15 @@ function AdminPanel({ onLogout }) {
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
-                    onChange={(e) => handlePickImage(e.target.files?.[0])}
+                    onChange={(e) => {
+                      handlePickImage(e.target.files?.[0])
+                      // allow re-selecting the same file
+                      e.target.value = ''
+                    }}
                   />
+                  <small style={{ opacity: 0.8 }}>
+                    Sur téléphone : vous pouvez choisir depuis la galerie ou l'appareil photo.
+                  </small>
                 </div>
 
                 <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
