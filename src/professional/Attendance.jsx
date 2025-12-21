@@ -16,7 +16,7 @@ function Attendance() {
   useEffect(() => {
     const userData = localStorage.getItem('professionalUser')
     if (!userData) {
-      navigate('/professional-login')
+      navigate('/login')
       return
     }
     const parsedUser = JSON.parse(userData)
@@ -52,7 +52,8 @@ function Attendance() {
 
   const handleLogout = () => {
     localStorage.removeItem('professionalUser')
-    localStorage.removeItem('token')
+    localStorage.removeItem('professionalToken')
+    localStorage.removeItem('userRole')
     navigate('/login')
   }
 

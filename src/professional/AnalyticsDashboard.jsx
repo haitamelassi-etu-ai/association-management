@@ -18,7 +18,7 @@ function AnalyticsDashboard() {
     // Check authentication
     const professionalUser = localStorage.getItem('professionalUser');
     if (!professionalUser) {
-      navigate('/professional-login');
+      navigate('/login');
       return;
     }
     

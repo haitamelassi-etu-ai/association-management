@@ -68,6 +68,10 @@ function AppRouter() {
           path="/login" 
           element={<UnifiedLogin />} 
         />
+        <Route
+          path="/professional-login"
+          element={<UnifiedLogin />}
+        />
         <Route 
           path="/admin" 
           element={

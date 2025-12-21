@@ -27,7 +27,7 @@ function ProfessionalDashboard() {
     // Check if user is logged in
     const userData = localStorage.getItem('professionalUser')
     if (!userData) {
-      navigate('/professional-login')
+      navigate('/login')
       return
     }
     
@@ -40,7 +40,7 @@ function ProfessionalDashboard() {
       fetchStats()
     } catch (error) {
       console.error('❌ Erreur parsing user:', error)
-      navigate('/professional-login')
+      navigate('/login')
     }
   }, [navigate])
 
@@ -65,7 +65,8 @@ function ProfessionalDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem('professionalUser')
-    localStorage.removeItem('token')
+    localStorage.removeItem('professionalToken')
+    localStorage.removeItem('userRole')
     navigate('/login')
   }
 

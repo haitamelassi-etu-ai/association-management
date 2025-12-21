@@ -16,7 +16,7 @@ function Beneficiaries() {
   useEffect(() => {
     const userData = localStorage.getItem('professionalUser')
     if (!userData) {
-      navigate('/professional-login')
+      navigate('/login')
       return
     }
     setUser(JSON.parse(userData))
@@ -39,7 +39,8 @@ function Beneficiaries() {
 
   const handleLogout = () => {
     localStorage.removeItem('professionalUser')
-    localStorage.removeItem('token')
+    localStorage.removeItem('professionalToken')
+    localStorage.removeItem('userRole')
     navigate('/login')
   }
 
