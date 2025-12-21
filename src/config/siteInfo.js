@@ -25,6 +25,7 @@ export const SITE_INFO = {
     emergencyPhoneNote: '',
     email: 'ass.addelalwaref@gmail.com',
     addressLines: ['Casablanca', 'Maroc'],
+    googleMapsUrl: 'https://maps.app.goo.gl/cQMiZg736uZWRMVP9',
     hoursTitle: 'Horaires',
     hoursLines: ['Coordination par téléphone', 'Merci de nous contacter avant le dépôt']
   },

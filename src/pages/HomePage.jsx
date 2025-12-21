@@ -592,12 +592,25 @@ function HomePage() {
                 </div>
               </div>
               
-              <div className="map-placeholder">
-                <div className="map-content">
-                  🗺️
-                  <p>Carte Google Maps</p>
-                  <small>(Intégration disponible)</small>
-                </div>
+              <div className="map-container">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d106538.6494803!2d-7.6816!3d33.5731!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xda7cd4778aa113b%3A0xb06c1d84f310fd3!2sCasablanca%2C%20Morocco!5e0!3m2!1sen!2s!4v1650000000000!5m2!1sen!2s"
+                  width="100%"
+                  height="300"
+                  style={{ border: 0, borderRadius: '12px' }}
+                  allowFullScreen=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Localisation de l'association"
+                ></iframe>
+                <a
+                  href={SITE_INFO.contact.googleMapsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="map-link"
+                >
+                  📍 Ouvrir dans Google Maps
+                </a>
               </div>
             </div>
             
