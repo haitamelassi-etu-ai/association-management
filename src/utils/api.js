@@ -3,15 +3,17 @@
  * Automatically detects the current hostname and uses it with port 5000
  */
 export const getApiUrl = () => {
-  // Check for environment variable first
-  if (import.meta.env.VITE_API_URL) {
-    console.log('📍 Using VITE_API_URL:', import.meta.env.VITE_API_URL);
-    return import.meta.env.VITE_API_URL;
+  const hostname = window.location.hostname;
+
+  // Local development
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    console.log('📍 Using localhost API');
+    return 'http://localhost:5000';
   }
 
-  // Always use localhost for development
-  console.log('📍 Using localhost API');
-  return 'http://localhost:5000';
+  // Production: use same origin (Vercel frontend + /api serverless)
+  console.log('📍 Using same-origin API:', window.location.origin);
+  return window.location.origin;
 };
 
 export const API_BASE_URL = getApiUrl();

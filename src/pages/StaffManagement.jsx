@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api, { authAPI } from '../services/api'
 import './StaffManagement.css'
 
 function StaffManagement() {
@@ -32,7 +32,7 @@ function StaffManagement() {
 
   const loadStaff = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users')
+      const response = await api.get('/users')
       setStaff(response.data.data || [])
       setLoading(false)
     } catch (error) {
@@ -87,10 +87,7 @@ function StaffManagement() {
     try {
       if (editMode && currentStaff) {
         // Update staff
-        const response = await axios.put(
-          `http://localhost:5000/api/users/${currentStaff._id}`,
-          formData
-        )
+        const response = await api.put(`/users/${currentStaff._id}`, formData)
         if (response.data.success) {
           logActivity('edit_staff', `Modification: ${formData.nom} ${formData.prenom}`)
           loadStaff()
@@ -98,10 +95,7 @@ function StaffManagement() {
         }
       } else {
         // Add new staff
-        const response = await axios.post(
-          'http://localhost:5000/api/auth/register',
-          formData
-        )
+        const response = await authAPI.register(formData)
         if (response.data.success) {
           logActivity('add_staff', `Nouveau staff: ${formData.nom} ${formData.prenom}`)
           loadStaff()
@@ -124,10 +118,7 @@ function StaffManagement() {
     }
 
     try {
-      const response = await axios.put(
-        `http://localhost:5000/api/users/${member._id}`,
-        updates
-      )
+      const response = await api.put(`/users/${member._id}`, updates)
       if (response.data.success) {
         const message = newStatus === 'inactive' && member.isWorking 
           ? `${member.nom} ${member.prenom}: ${newStatus} (auto check-out)`
@@ -144,9 +135,7 @@ function StaffManagement() {
   const handleDeleteStaff = async (member) => {
     if (window.confirm(`Supprimer ${member.nom} ${member.prenom}?`)) {
       try {
-        const response = await axios.delete(
-          `http://localhost:5000/api/users/${member._id}`
-        )
+        const response = await api.delete(`/users/${member._id}`)
         if (response.data.success) {
           logActivity('delete_staff', `Suppression: ${member.nom} ${member.prenom}`)
           loadStaff()
@@ -167,10 +156,7 @@ function StaffManagement() {
 
     try {
       const newWorkingStatus = !member.isWorking
-      const response = await axios.put(
-        `http://localhost:5000/api/users/${member._id}`,
-        { isWorking: newWorkingStatus }
-      )
+      const response = await api.put(`/users/${member._id}`, { isWorking: newWorkingStatus })
       if (response.data.success) {
         const action = newWorkingStatus ? 'Check-in' : 'Check-out'
         logActivity('staff_checkin', `${action}: ${member.nom} ${member.prenom}`)

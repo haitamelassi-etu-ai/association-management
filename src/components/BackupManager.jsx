@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './BackupManager.css';
+import { API_URL } from '../utils/api';
 
 const BackupManager = () => {
   const { t } = useTranslation();
@@ -33,7 +34,7 @@ const BackupManager = () => {
         ? '/api/backup/export/all'
         : `/api/backup/export/${type}`;
 
-      const response = await fetch(`http://localhost:5000${endpoint}`, {
+      const response = await fetch(`${API_URL}${endpoint.replace('/api', '')}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -60,7 +61,7 @@ const BackupManager = () => {
   const loadStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/backup/stats', {
+      const response = await fetch(`${API_URL}/backup/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

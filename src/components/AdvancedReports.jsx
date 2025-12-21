@@ -5,6 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import './AdvancedReports.css';
+import { API_URL } from '../utils/api';
 
 const AdvancedReports = () => {
   const { t } = useTranslation();
@@ -31,7 +32,7 @@ const AdvancedReports = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `http://localhost:5000/api/reports/advanced/financial?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`,
+        `${API_URL}/reports/advanced/financial?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`,
         {
           headers: { 'Authorization': `Bearer ${token}` }
         }
@@ -54,7 +55,7 @@ const AdvancedReports = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `http://localhost:5000/api/reports/advanced/services?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`,
+        `${API_URL}/reports/advanced/services?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`,
         {
           headers: { 'Authorization': `Bearer ${token}` }
         }
@@ -77,7 +78,7 @@ const AdvancedReports = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        'http://localhost:5000/api/reports/advanced/dashboard',
+        `${API_URL}/reports/advanced/dashboard`,
         {
           headers: { 'Authorization': `Bearer ${token}` }
         }
