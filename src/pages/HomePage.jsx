@@ -23,6 +23,15 @@ function HomePage() {
   const [newsItems, setNewsItems] = useState([])
   const formRef = useRef()
 
+  const goToSection = (id) => {
+    setIsMenuOpen(false)
+    const el = document.getElementById(id)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    window.location.hash = `#${id}`
+  }
+
   const defaultNews = [
     {
       _id: 'default-1',
@@ -199,7 +208,7 @@ function HomePage() {
           </nav>
 
           <div className="header-image-container">
-            <img src="/images/initiative.png" alt="المبادرة" className="header-initiative-image" />
+            <img src="/images/initiative.png" alt="Initiative" className="header-initiative-image" />
           </div>
         </div>
       </header>
@@ -320,7 +329,7 @@ function HomePage() {
                   <p>Sans jugement ni discrimination. Accueil ouvert à tous, dans le respect des différences.</p>
                 </div>
                 <div className="value-item">
-                  <span className="value-icon">�</span>
+                  <span className="value-icon">🔒</span>
                   <strong>Confidentialité</strong>
                   <p>Protection de la vie privée. Respect total du secret et de l'anonymat.</p>
                 </div>
@@ -451,7 +460,9 @@ function HomePage() {
                 <li>✓ Accompagnement administratif</li>
                 <li>✓ Animation d'ateliers</li>
               </ul>
-              <button className="btn-secondary">Je Deviens Bénévole</button>
+              <button className="btn-secondary" type="button" onClick={() => goToSection('contact')}>
+                Je Deviens Bénévole
+              </button>
             </div>
             
             <div className="help-card">
@@ -466,7 +477,9 @@ function HomePage() {
                 <li>✓ Partenariats stratégiques</li>
                 <li>✓ Actions solidaires</li>
               </ul>
-              <button className="btn-secondary">Nous Contacter</button>
+              <button className="btn-secondary" type="button" onClick={() => goToSection('contact')}>
+                Nous Contacter
+              </button>
             </div>
             
             <div className="help-card">
@@ -482,7 +495,9 @@ function HomePage() {
                 <li>✓ Denrées alimentaires</li>
                 <li>✓ Couvertures et literie</li>
               </ul>
-              <button className="btn-secondary">Liste des Besoins</button>
+              <button className="btn-secondary" type="button" onClick={() => navigate('/don')}>
+                Liste des Besoins
+              </button>
             </div>
           </div>
         </div>
