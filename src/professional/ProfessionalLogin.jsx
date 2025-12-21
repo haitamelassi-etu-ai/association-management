@@ -22,17 +22,12 @@ function ProfessionalLogin() {
       console.log('🔵 Tentative de connexion avec:', credentials)
       const response = await authAPI.login(credentials)
       console.log('🟢 Réponse API:', response.data)
-      
-      const { user, token } = response.data.data
-      console.log('✅ User:', user, 'Token:', token)
-      
+
+      const userData = response.data.data
       // Save user data with token
-      const userData = {
-        ...user,
-        token
-      }
       localStorage.setItem('professionalUser', JSON.stringify(userData))
-      console.log('💾 Données sauvegardées:', userData)
+      localStorage.setItem('professionalToken', userData.token)
+      localStorage.setItem('userRole', userData?.role === 'admin' ? 'admin' : 'professional')
       
       navigate('/professional/dashboard')
     } catch (err) {

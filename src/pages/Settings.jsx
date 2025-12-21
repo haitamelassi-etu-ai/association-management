@@ -24,7 +24,7 @@ function Settings() {
     // Check admin authentication
     const isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn')
     if (!isAdminLoggedIn) {
-      navigate('/admin-login')
+      navigate('/login')
       return
     }
 

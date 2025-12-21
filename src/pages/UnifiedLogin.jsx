@@ -16,31 +16,6 @@ function UnifiedLogin() {
     setError('')
     setLoading(true)
 
-    console.log('Login attempt:', { email, password })
-
-    // Check if Admin
-    if (email === 'admin@adelelouerif.org' && password === 'admin123') {
-      console.log('Admin login detected!')
-      localStorage.setItem('isAdminLoggedIn', 'true')
-      localStorage.setItem('userRole', 'admin')
-      
-      // Log activity
-      const activityLog = JSON.parse(localStorage.getItem('activityLog') || '[]')
-      activityLog.unshift({
-        id: Date.now().toString(),
-        type: 'login',
-        user: 'Admin',
-        description: 'Connexion au panneau d\'administration',
-        timestamp: new Date().toISOString()
-      })
-      localStorage.setItem('activityLog', JSON.stringify(activityLog))
-      
-      console.log('Navigating to /admin...')
-      setLoading(false)
-      navigate('/admin')
-      return
-    }
-
     // Check Professional/Staff from MongoDB
     try {
       console.log('🔄 Attempting login to:', `${API_URL}/auth/login`);
@@ -59,9 +34,13 @@ function UnifiedLogin() {
 
       if (response.data.success) {
         const user = response.data.data
+        // Persist token for API calls (admin and professional)
         localStorage.setItem('professionalUser', JSON.stringify(user))
         localStorage.setItem('professionalToken', user.token)
-        localStorage.setItem('userRole', 'professional')
+
+        const isAdmin = user?.role === 'admin'
+        localStorage.setItem('userRole', isAdmin ? 'admin' : 'professional')
+        localStorage.setItem('isAdminLoggedIn', isAdmin ? 'true' : 'false')
         
         // Log activity
         const activityLog = JSON.parse(localStorage.getItem('activityLog') || '[]')
@@ -69,13 +48,13 @@ function UnifiedLogin() {
           id: Date.now().toString(),
           type: 'login',
           user: `${user.nom} ${user.prenom}`,
-          description: 'Connexion au portail professionnel',
+          description: isAdmin ? 'Connexion au panneau d\'administration' : 'Connexion au portail professionnel',
           timestamp: new Date().toISOString()
         })
         localStorage.setItem('activityLog', JSON.stringify(activityLog))
         
         setLoading(false)
-        navigate('/professional/dashboard')
+        navigate(isAdmin ? '/admin' : '/professional/dashboard')
       }
     } catch (err) {
       console.error('❌ Login error:', err);
