@@ -3,6 +3,9 @@ const router = express.Router();
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 
+// All user routes require authentication
+router.use(protect);
+
 // Get all users
 router.get('/', async (req, res) => {
   try {
