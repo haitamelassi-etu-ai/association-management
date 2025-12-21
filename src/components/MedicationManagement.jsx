@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { API_URL } from '../utils/api';
 import './MedicationManagement.css';
 
 const MedicationManagement = () => {
@@ -76,7 +77,7 @@ const MedicationManagement = () => {
     setLoading(true);
     try {
       const token = getToken();
-      let url = 'http://localhost:5000/api/medications?active=true';
+      let url = `${API_URL}/medications?active=true`;
       if (selectedBeneficiary !== 'all') {
         url += `&beneficiaryId=${selectedBeneficiary}`;
       }
@@ -101,7 +102,7 @@ const MedicationManagement = () => {
       const token = getToken();
       console.log('🔑 Token:', token ? 'Exists ✅' : 'Missing ❌');
       
-      const response = await fetch('http://localhost:5000/api/beneficiaries', {
+      const response = await fetch(`${API_URL}/beneficiaries`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -130,7 +131,7 @@ const MedicationManagement = () => {
   const fetchPharmacyMedications = async () => {
     try {
       const token = getToken();
-      const response = await fetch('http://localhost:5000/api/pharmacy?active=true', {
+      const response = await fetch(`${API_URL}/pharmacy?active=true`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -148,7 +149,7 @@ const MedicationManagement = () => {
   const fetchStats = async () => {
     try {
       const token = getToken();
-      const response = await fetch('http://localhost:5000/api/medications/stats', {
+      const response = await fetch(`${API_URL}/medications/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -164,7 +165,7 @@ const MedicationManagement = () => {
   const fetchRefillList = async () => {
     try {
       const token = getToken();
-      const response = await fetch('http://localhost:5000/api/medications/refill/needed', {
+      const response = await fetch(`${API_URL}/medications/refill/needed`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -185,7 +186,7 @@ const MedicationManagement = () => {
 
     try {
       const token = getToken();
-      const response = await fetch('http://localhost:5000/api/medications', {
+      const response = await fetch(`${API_URL}/medications`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -258,7 +259,7 @@ const MedicationManagement = () => {
       const token = getToken();
       console.log('📤 Sending administration:', { medicationId, time, quantityGiven, notes });
       
-      const response = await fetch(`http://localhost:5000/api/medications/${medicationId}/administer`, {
+      const response = await fetch(`${API_URL}/medications/${medicationId}/administer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

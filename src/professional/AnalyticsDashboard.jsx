@@ -2,11 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { API_URL } from '../utils/api';
 import './AnalyticsDashboard.css';
-
-const API_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:5000/api'
-  : `http://${window.location.hostname}:5000/api`;
 
 const COLORS = ['#3498db', '#e74c3c', '#f39c12', '#2ecc71', '#9b59b6', '#1abc9c'];
 

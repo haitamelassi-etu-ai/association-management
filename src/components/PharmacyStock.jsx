@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { API_URL } from '../utils/api';
 import './PharmacyStock.css';
 
 const PharmacyStock = () => {
@@ -76,7 +77,7 @@ const PharmacyStock = () => {
     setLoading(true);
     try {
       const token = getToken();
-      let url = 'http://localhost:5000/api/pharmacy?active=true';
+      let url = `${API_URL}/pharmacy?active=true`;
       if (selectedCategory !== 'all') {
         url += `&category=${selectedCategory}`;
       }
@@ -104,10 +105,10 @@ const PharmacyStock = () => {
       const token = getToken();
       
       const [lowStockRes, expiringSoonRes] = await Promise.all([
-        fetch('http://localhost:5000/api/pharmacy/alerts/low-stock', {
+        fetch(`${API_URL}/pharmacy/alerts/low-stock`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('http://localhost:5000/api/pharmacy/alerts/expiring-soon', {
+        fetch(`${API_URL}/pharmacy/alerts/expiring-soon`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
@@ -130,7 +131,7 @@ const PharmacyStock = () => {
 
     try {
       const token = getToken();
-      const response = await fetch('http://localhost:5000/api/pharmacy', {
+      const response = await fetch(`${API_URL}/pharmacy`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -179,7 +180,7 @@ const PharmacyStock = () => {
       const token = getToken();
       console.log('📤 Updating stock:', { medicationId, operation, quantity });
       
-      const response = await fetch(`http://localhost:5000/api/pharmacy/${medicationId}/stock`, {
+      const response = await fetch(`${API_URL}/pharmacy/${medicationId}/stock`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

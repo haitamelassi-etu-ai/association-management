@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../utils/api';
 import './FoodStockManagement.css';
-
-// Configuration de l'URL de l'API
-const API_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:5000/api' 
-  : `http://${window.location.hostname}:5000/api`;
 
 const FoodStockManagement = () => {
   const navigate = useNavigate();

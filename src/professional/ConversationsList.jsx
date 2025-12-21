@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../utils/api';
 import './ConversationsList.css';
 
 const ConversationsList = ({ onSelectUser, selectedUserId, socket }) => {
@@ -46,7 +47,7 @@ const ConversationsList = ({ onSelectUser, selectedUserId, socket }) => {
     try {
       setLoading(true);
       const response = await axios.get(
-        'http://localhost:5000/api/chat/conversations',
+        `${API_URL}/chat/conversations`,
         {
           headers: {
             Authorization: `Bearer ${currentUser.token}`
@@ -64,7 +65,7 @@ const ConversationsList = ({ onSelectUser, selectedUserId, socket }) => {
   const fetchStaffMembers = async () => {
     try {
       const response = await axios.get(
-        'http://localhost:5000/api/chat/staff',
+        `${API_URL}/chat/staff`,
         {
           headers: {
             Authorization: `Bearer ${currentUser.token}`

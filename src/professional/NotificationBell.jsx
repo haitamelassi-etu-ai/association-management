@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../utils/api';
 import './NotificationBell.css';
-
-const API_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:5000/api'
-  : `http://${window.location.hostname}:5000/api`;
 
 function NotificationBell({ onClick }) {
   const [unreadCount, setUnreadCount] = useState(0);

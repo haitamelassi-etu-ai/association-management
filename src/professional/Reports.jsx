@@ -3,11 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { beneficiariesAPI, attendanceAPI, announcementsAPI } from '../services/api'
 import axios from 'axios'
 import { generateBeneficiariesReport, generateMonthlyReport, generateAttendanceReport } from '../utils/pdfGenerator'
+import { API_URL } from '../utils/api'
 import './Reports.css'
-
-const API_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:5000/api'
-  : `http://${window.location.hostname}:5000/api`;
 
 function Reports() {
   const [user, setUser] = useState(null)

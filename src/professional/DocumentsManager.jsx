@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { API_URL } from '../utils/api';
 import './DocumentsManager.css';
-
-const API_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:5000/api'
-  : `http://${window.location.hostname}:5000/api`;
 
 const DOCUMENT_TYPES = [
   { value: 'cin', label: '🪪 CIN' },

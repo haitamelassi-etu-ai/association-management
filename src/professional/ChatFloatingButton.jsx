@@ -4,6 +4,7 @@ import ConversationsList from './ConversationsList';
 import ChatWindow from './ChatWindow';
 import axios from 'axios';
 import { SOCKET_URL } from '../services/api';
+import { API_URL } from '../utils/api';
 import './ChatFloatingButton.css';
 
 const ChatFloatingButton = () => {
@@ -68,7 +69,7 @@ const ChatFloatingButton = () => {
   const fetchUnreadCount = async () => {
     try {
       const response = await axios.get(
-        'http://localhost:5000/api/chat/unread/count',
+        `${API_URL}/chat/unread/count`,
         {
           headers: {
             Authorization: `Bearer ${currentUser.token}`

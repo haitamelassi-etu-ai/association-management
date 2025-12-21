@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { API_URL } from '../utils/api';
 import './MealDistribution.css';
 
 const MealDistribution = () => {
@@ -48,7 +49,7 @@ const MealDistribution = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      let url = `http://localhost:5000/api/meals?date=${selectedDate}`;
+      let url = `${API_URL}/meals?date=${selectedDate}`;
       if (selectedMealType !== 'all') {
         url += `&mealType=${selectedMealType}`;
       }
@@ -72,7 +73,7 @@ const MealDistribution = () => {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/meals/stats/daily?date=${selectedDate}`, {
+      const response = await fetch(`${API_URL}/meals/stats/daily?date=${selectedDate}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -88,7 +89,7 @@ const MealDistribution = () => {
   const fetchBeneficiaries = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/beneficiaries', {
+      const response = await fetch(`${API_URL}/beneficiaries`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -115,7 +116,7 @@ const MealDistribution = () => {
       const token = localStorage.getItem('token');
       const menuItemsArray = newMeal.menuItems.split(',').map(item => item.trim()).filter(item => item);
 
-      const response = await fetch('http://localhost:5000/api/meals', {
+      const response = await fetch(`${API_URL}/meals`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +162,7 @@ const MealDistribution = () => {
     setLoading(true);
     try {
       const token = getToken();
-      const response = await fetch('http://localhost:5000/api/meals/bulk', {
+      const response = await fetch(`${API_URL}/meals/bulk`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -203,7 +204,7 @@ const MealDistribution = () => {
     setLoading(true);
     try {
       const token = getToken();
-      const response = await fetch('http://localhost:5000/api/meals/daily-plan', {
+      const response = await fetch(`${API_URL}/meals/daily-plan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -236,7 +237,7 @@ const MealDistribution = () => {
   const handleMarkServed = async (mealId) => {
     try {
       const token = getToken();
-      const response = await fetch(`http://localhost:5000/api/meals/${mealId}/serve`, {
+      const response = await fetch(`${API_URL}/meals/${mealId}/serve`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`

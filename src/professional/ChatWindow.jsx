@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { API_URL } from '../utils/api';
 import './ChatWindow.css';
 
 const ChatWindow = ({ selectedUser, socket, onClose }) => {
@@ -32,7 +33,7 @@ const ChatWindow = ({ selectedUser, socket, onClose }) => {
     try {
       setLoading(true);
       const response = await axios.get(
-        `http://localhost:5000/api/chat/messages/${selectedUser._id}`,
+        `${API_URL}/chat/messages/${selectedUser._id}`,
         {
           headers: {
             Authorization: `Bearer ${currentUser.token}`
@@ -50,7 +51,7 @@ const ChatWindow = ({ selectedUser, socket, onClose }) => {
   const markMessagesAsRead = async () => {
     try {
       await axios.put(
-        `http://localhost:5000/api/chat/messages/read/${selectedUser._id}`,
+        `${API_URL}/chat/messages/read/${selectedUser._id}`,
         {},
         {
           headers: {
