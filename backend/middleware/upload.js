@@ -3,7 +3,13 @@ const path = require('path');
 const fs = require('fs');
 
 // Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../uploads/beneficiaries');
+// - Local dev: use project folder
+// - Vercel serverless: deployment filesystem is read-only; use /tmp
+const isVercel = Boolean(process.env.VERCEL);
+const uploadsDir = isVercel
+  ? path.join('/tmp', 'uploads', 'beneficiaries')
+  : path.join(__dirname, '../uploads/beneficiaries');
+
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -43,5 +49,8 @@ const upload = multer({
   },
   fileFilter: fileFilter
 });
+
+// Expose for other routes (download/delete) to stay consistent.
+upload.uploadsDir = uploadsDir;
 
 module.exports = upload;

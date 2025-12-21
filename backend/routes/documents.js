@@ -6,6 +6,8 @@ const { protect, authorize } = require('../middleware/auth');
 const path = require('path');
 const fs = require('fs');
 
+const uploadsDir = upload.uploadsDir || path.join(__dirname, '../uploads/beneficiaries');
+
 // @desc    Upload document for beneficiary
 // @route   POST /api/documents/beneficiary/:id
 // @access  Private (Admin, Manager, Staff)
@@ -131,7 +133,7 @@ router.delete('/beneficiary/:id/document/:documentId', protect, authorize('admin
     const document = beneficiary.documents[docIndex];
 
     // Delete file from filesystem
-    const filePath = path.join(__dirname, '..', document.url);
+    const filePath = path.join(uploadsDir, document.filename);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
@@ -160,7 +162,7 @@ router.delete('/beneficiary/:id/document/:documentId', protect, authorize('admin
 router.get('/download/:filename', protect, (req, res) => {
   try {
     const { filename } = req.params;
-    const filePath = path.join(__dirname, '../uploads/beneficiaries', filename);
+    const filePath = path.join(uploadsDir, filename);
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({
