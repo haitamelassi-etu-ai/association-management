@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { API_URL } from '../utils/api';
 import './FoodStockManagement.css';
 import ProfessionalLayout from '../professional/ProfessionalLayout';
@@ -42,6 +44,10 @@ const FoodStockManagement = () => {
   });
   const [consumeData, setConsumeData] = useState({ quantite: 0, raison: '' });
   const [planData, setPlanData] = useState(null);
+  
+  // Ajustement stock
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [adjustData, setAdjustData] = useState({ quantite: 0, type: 'add', raison: '' });
 
   const categories = [
     { value: 'fruits-legumes', label: '🍎 Fruits & Légumes', icon: '🥗' },
@@ -54,6 +60,331 @@ const FoodStockManagement = () => {
   ];
 
   const unites = ['kg', 'g', 'L', 'ml', 'unités', 'boîtes', 'sachets'];
+
+  // ═══════════════════════════════════════
+  // Export Excel professionnel (ExcelJS)
+  // ═══════════════════════════════════════
+  const exportToExcel = async () => {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Association Adel Elouerif';
+    wb.created = new Date();
+
+    const ws = wb.addWorksheet('État du Stock Alimentaire', {
+      properties: { tabColor: { argb: '2E7D32' } },
+      pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true }
+    });
+
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    // ── Shared styles ──
+    const thinBorder = {
+      top: { style: 'thin', color: { argb: 'FF999999' } },
+      left: { style: 'thin', color: { argb: 'FF999999' } },
+      bottom: { style: 'thin', color: { argb: 'FF999999' } },
+      right: { style: 'thin', color: { argb: 'FF999999' } }
+    };
+
+    // ── Header block ──
+    // Row 1: Association name
+    ws.mergeCells('A1:G1');
+    const assocCell = ws.getCell('A1');
+    assocCell.value = 'Association Adel Elouerif';
+    assocCell.font = { bold: true, size: 18, color: { argb: 'FF1B5E20' } };
+    assocCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(1).height = 35;
+
+    // Row 2: Title
+    ws.mergeCells('A2:G2');
+    const titleCell = ws.getCell('A2');
+    titleCell.value = 'État du Stock Alimentaire';
+    titleCell.font = { bold: true, size: 14, color: { argb: 'FF2E7D32' } };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } };
+    ws.getRow(2).height = 28;
+
+    // Row 3: Date
+    ws.mergeCells('A3:G3');
+    const dateCell = ws.getCell('A3');
+    dateCell.value = `Date d'impression : ${dateStr}`;
+    dateCell.font = { size: 11 };
+    dateCell.alignment = { horizontal: 'center' };
+
+    // Row 4: Responsable
+    ws.mergeCells('A4:G4');
+    ws.getCell('A4').value = 'Responsable : ___________________';
+    ws.getCell('A4').font = { size: 11 };
+    ws.getCell('A4').alignment = { horizontal: 'center' };
+
+    // Row 5: Signature
+    ws.mergeCells('A5:G5');
+    ws.getCell('A5').value = 'Signature  : ___________________';
+    ws.getCell('A5').font = { size: 11 };
+    ws.getCell('A5').alignment = { horizontal: 'center' };
+
+    // Row 6: empty
+    ws.addRow([]);
+
+    // ── Table header (row 7) ──
+    const headerRow = ws.addRow([
+      'Nom du Produit',
+      'Catégorie',
+      'Quantité Disponible',
+      'Unité',
+      "Date d'Expiration",
+      'Jours Restants',
+      'Statut'
+    ]);
+    headerRow.height = 25;
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E7D32' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.border = thinBorder;
+    });
+
+    // ── Data rows ──
+    let totalProduits = 0;
+    let produitsCritiques = 0;
+    let produitsExpirantBientot = 0;
+    let produitsDisponibles = 0;
+
+    stockItems.forEach((item) => {
+      totalProduits++;
+
+      const categoryObj = categories.find(c => c.value === item.categorie);
+      const catLabel = categoryObj ? categoryObj.label : item.categorie;
+
+      const expDate = item.dateExpiration ? new Date(item.dateExpiration) : null;
+      const expStr = expDate ? expDate.toLocaleDateString('fr-FR') : 'N/A';
+
+      let joursRestants = 'N/A';
+      let statut = 'Disponible';
+
+      if (expDate) {
+        joursRestants = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      }
+
+      if (item.quantite === 0) {
+        statut = '🔴 Critique';
+        produitsCritiques++;
+      } else if (typeof joursRestants === 'number' && joursRestants < 30) {
+        statut = '🟠 Expire bientôt';
+        produitsExpirantBientot++;
+      } else {
+        statut = '🟢 Disponible';
+        produitsDisponibles++;
+      }
+
+      const row = ws.addRow([
+        item.nom,
+        catLabel,
+        item.quantite,
+        item.unite,
+        expStr,
+        joursRestants,
+        statut
+      ]);
+
+      // Style each cell
+      row.eachCell((cell, colNumber) => {
+        cell.border = thinBorder;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.font = { size: 10 };
+      });
+
+      // Conditional row coloring
+      if (statut.includes('Critique')) {
+        row.eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCDD2' } };
+          cell.font = { size: 10, bold: true, color: { argb: 'FFC62828' } };
+        });
+      } else if (statut.includes('Expire bientôt')) {
+        row.eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE0B2' } };
+          cell.font = { size: 10, bold: true, color: { argb: 'FFE65100' } };
+        });
+      } else {
+        row.eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } };
+        });
+      }
+
+      // Left align product name
+      row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+    });
+
+    // ── Empty row ──
+    ws.addRow([]);
+
+    // ── Summary section ──
+    const summaryTitleRow = ws.addRow(['📋 Résumé Général']);
+    ws.mergeCells(`A${summaryTitleRow.number}:G${summaryTitleRow.number}`);
+    summaryTitleRow.getCell(1).font = { bold: true, size: 14, color: { argb: 'FF1B5E20' } };
+    summaryTitleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } };
+    summaryTitleRow.getCell(1).alignment = { horizontal: 'center' };
+    summaryTitleRow.height = 25;
+
+    const summaryData = [
+      ['Total produits', totalProduits, '', '', '', '', ''],
+      ['🟢 Produits disponibles', produitsDisponibles, '', '', '', '', ''],
+      ['🔴 Produits critiques (quantité = 0)', produitsCritiques, '', '', '', '', ''],
+      ['🟠 Produits expirant dans < 30 jours', produitsExpirantBientot, '', '', '', '', ''],
+    ];
+
+    summaryData.forEach((data) => {
+      const row = ws.addRow(data);
+      row.getCell(1).font = { size: 11, bold: true };
+      row.getCell(2).font = { size: 11, bold: true, color: { argb: 'FF2E7D32' } };
+      row.getCell(1).alignment = { horizontal: 'left' };
+      row.getCell(2).alignment = { horizontal: 'center' };
+      row.getCell(1).border = thinBorder;
+      row.getCell(2).border = thinBorder;
+    });
+
+    // ── Column widths (auto-fit approximation) ──
+    ws.columns = [
+      { width: 30 },  // Nom
+      { width: 26 },  // Catégorie
+      { width: 22 },  // Quantité
+      { width: 12 },  // Unité
+      { width: 20 },  // Date Exp
+      { width: 18 },  // Jours Restants
+      { width: 22 },  // Statut
+    ];
+
+    // ── Generate and download ──
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, `Stock_Alimentaire_${dateStr.replace(/\//g, '-')}.xlsx`);
+  };
+
+  // ═══════════════════════════════════════
+  // Imprimer / PDF
+  // ═══════════════════════════════════════
+  const printStock = () => {
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    let totalProduits = 0;
+    let produitsCritiques = 0;
+    let produitsExpirantBientot = 0;
+
+    const tableRows = stockItems.map((item) => {
+      totalProduits++;
+      const categoryObj = categories.find(c => c.value === item.categorie);
+      const catLabel = categoryObj ? categoryObj.label : item.categorie;
+      const expDate = item.dateExpiration ? new Date(item.dateExpiration) : null;
+      const expStr = expDate ? expDate.toLocaleDateString('fr-FR') : 'N/A';
+      let joursRestants = 'N/A';
+      let statut = 'Disponible';
+      let rowClass = '';
+
+      if (expDate) {
+        joursRestants = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      }
+
+      if (item.quantite === 0) {
+        statut = 'Critique';
+        rowClass = 'critique';
+        produitsCritiques++;
+      } else if (typeof joursRestants === 'number' && joursRestants < 30) {
+        statut = 'Expire bientôt';
+        rowClass = 'expire-soon';
+        produitsExpirantBientot++;
+      }
+
+      return `<tr class="${rowClass}">
+        <td>${item.nom}</td>
+        <td>${catLabel}</td>
+        <td>${item.quantite}</td>
+        <td>${item.unite}</td>
+        <td>${expStr}</td>
+        <td>${joursRestants}</td>
+        <td><strong>${statut}</strong></td>
+      </tr>`;
+    }).join('');
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="utf-8">
+        <title>État du Stock Alimentaire</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 30px; color: #333; }
+          .header { text-align: center; margin-bottom: 25px; border-bottom: 3px solid #2E7D32; padding-bottom: 15px; }
+          .header h1 { font-size: 22px; color: #1B5E20; margin-bottom: 5px; }
+          .header h2 { font-size: 16px; color: #2E7D32; margin-bottom: 10px; }
+          .header p { font-size: 12px; color: #666; margin: 3px 0; }
+          .signatures { display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; }
+          .signatures span { display: inline-block; min-width: 200px; border-bottom: 1px solid #999; padding-bottom: 2px; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 11px; }
+          th { background: #2E7D32; color: white; padding: 8px 6px; text-align: center; font-size: 11px; }
+          td { padding: 6px; text-align: center; border: 1px solid #ddd; }
+          td:first-child { text-align: left; font-weight: 500; }
+          tr:nth-child(even) { background: #f9f9f9; }
+          tr.critique { background: #FFCDD2 !important; color: #C62828; font-weight: bold; }
+          tr.expire-soon { background: #FFE0B2 !important; color: #E65100; font-weight: bold; }
+          .summary { margin-top: 25px; padding: 15px; background: #E8F5E9; border-radius: 8px; border: 1px solid #A5D6A7; }
+          .summary h3 { color: #1B5E20; margin-bottom: 10px; font-size: 14px; }
+          .summary-grid { display: flex; gap: 30px; flex-wrap: wrap; }
+          .summary-item { display: flex; gap: 8px; font-size: 12px; }
+          .summary-item .label { font-weight: 600; }
+          .summary-item .value { color: #2E7D32; font-weight: bold; }
+          .footer { text-align: center; margin-top: 30px; font-size: 10px; color: #999; border-top: 1px solid #ddd; padding-top: 10px; }
+          @media print { body { padding: 15px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="/images/logo.png" alt="Logo" style="width:80px;height:80px;margin-bottom:8px;" />
+          <h1>Association Adel Elouerif</h1>
+          <h2>État du Stock Alimentaire</h2>
+          <p>Date d'impression : ${dateStr}</p>
+          <div class="signatures">
+            <div>Responsable : <span>&nbsp;</span></div>
+            <div>Signature : <span>&nbsp;</span></div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Nom du Produit</th>
+              <th>Catégorie</th>
+              <th>Quantité</th>
+              <th>Unité</th>
+              <th>Date d'Expiration</th>
+              <th>Jours Restants</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+
+        <div class="summary">
+          <h3>📋 Résumé Général</h3>
+          <div class="summary-grid">
+            <div class="summary-item"><span class="label">Total produits :</span> <span class="value">${totalProduits}</span></div>
+            <div class="summary-item"><span class="label">🔴 Critiques :</span> <span class="value">${produitsCritiques}</span></div>
+            <div class="summary-item"><span class="label">🟠 Expire bientôt :</span> <span class="value">${produitsExpirantBientot}</span></div>
+          </div>
+        </div>
+
+        <div class="footer">
+          Association Adel Elouerif — Document généré le ${dateStr}
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 500);
+  };
 
   // Récupérer le token
   const getAuthHeaders = () => {
@@ -200,6 +531,34 @@ const FoodStockManagement = () => {
     setShowConsumeModal(true);
   };
 
+  const openAdjustModal = (item) => {
+    setCurrentItem(item);
+    setAdjustData({ quantite: 0, type: 'add', raison: '' });
+    setShowAdjustModal(true);
+  };
+
+  const handleAdjust = async (e) => {
+    e.preventDefault();
+    if (adjustData.quantite <= 0) {
+      alert('La quantité doit être supérieure à 0');
+      return;
+    }
+    try {
+      await axios.post(
+        `${API_URL}/food-stock/${currentItem._id}/adjust`,
+        adjustData,
+        getAuthHeaders()
+      );
+      setShowAdjustModal(false);
+      setAdjustData({ quantite: 0, type: 'add', raison: '' });
+      fetchData();
+      alert(adjustData.type === 'add' ? 'Stock ajouté avec succès!' : 'Stock retiré avec succès!');
+    } catch (error) {
+      console.error('Erreur ajustement:', error);
+      alert(error.response?.data?.message || 'Erreur lors de l\'ajustement');
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       nom: '',
@@ -245,9 +604,17 @@ const FoodStockManagement = () => {
     <div className="food-stock-container">
       <div className="food-stock-header">
         <h1>🏪 Gestion du Stock Alimentaire</h1>
-        <button className="btn-add" onClick={() => setShowAddModal(true)}>
-          ➕ Ajouter un article
-        </button>
+        <div className="header-actions">
+          <button className="btn-print" onClick={printStock} title="Imprimer / PDF">
+            🖨️ Imprimer / PDF
+          </button>
+          <button className="btn-export-excel" onClick={exportToExcel} title="Exporter en Excel">
+            📊 Exporter en Excel
+          </button>
+          <button className="btn-add" onClick={() => setShowAddModal(true)}>
+            ➕ Ajouter un article
+          </button>
+        </div>
       </div>
 
       {/* Statistiques */}
@@ -401,6 +768,13 @@ const FoodStockManagement = () => {
                   <td>
                     <div className="action-buttons">
                       <button 
+                        className="btn-action adjust"
+                        onClick={() => openAdjustModal(item)}
+                        title="Ajuster le stock"
+                      >
+                        📦
+                      </button>
+                      <button 
                         className="btn-action consume"
                         onClick={() => openConsumeModal(item)}
                         title="Consommer"
@@ -442,6 +816,45 @@ const FoodStockManagement = () => {
           </div>
         )}
       </div>
+
+      {/* Summary Section */}
+      {stockItems.length > 0 && (
+        <div className="stock-summary">
+          <h3>📋 Résumé Général</h3>
+          <div className="summary-cards">
+            <div className="summary-card total">
+              <span className="summary-value">{stockItems.length}</span>
+              <span className="summary-label">Total Produits</span>
+            </div>
+            <div className="summary-card critique">
+              <span className="summary-value">
+                {stockItems.filter(i => i.quantite === 0).length}
+              </span>
+              <span className="summary-label">🔴 Critiques</span>
+            </div>
+            <div className="summary-card expire">
+              <span className="summary-value">
+                {stockItems.filter(i => {
+                  if (i.quantite === 0) return false;
+                  const d = i.dateExpiration ? Math.ceil((new Date(i.dateExpiration) - new Date()) / 86400000) : 999;
+                  return d < 30;
+                }).length}
+              </span>
+              <span className="summary-label">🟠 Expire &lt; 30j</span>
+            </div>
+            <div className="summary-card ok">
+              <span className="summary-value">
+                {stockItems.filter(i => {
+                  if (i.quantite === 0) return false;
+                  const d = i.dateExpiration ? Math.ceil((new Date(i.dateExpiration) - new Date()) / 86400000) : 999;
+                  return d >= 30;
+                }).length}
+              </span>
+              <span className="summary-label">🟢 Disponibles</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Ajout */}
       {showAddModal && (
@@ -820,6 +1233,83 @@ const FoodStockManagement = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ajuster Stock */}
+      {showAdjustModal && currentItem && (
+        <div className="modal-overlay" onClick={() => setShowAdjustModal(false)}>
+          <div className="modal-content small" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>📦 Ajuster le Stock: {currentItem.nom}</h2>
+              <button className="modal-close" onClick={() => setShowAdjustModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleAdjust} className="adjust-form">
+              <div className="current-stock-info">
+                <span className="info-label">Stock actuel :</span>
+                <span className="info-value">{currentItem.quantite} {currentItem.unite}</span>
+              </div>
+
+              <div className="adjust-type-selector">
+                <button
+                  type="button"
+                  className={`type-btn add ${adjustData.type === 'add' ? 'active' : ''}`}
+                  onClick={() => setAdjustData({ ...adjustData, type: 'add' })}
+                >
+                  ➕ Ajouter
+                </button>
+                <button
+                  type="button"
+                  className={`type-btn remove ${adjustData.type === 'remove' ? 'active' : ''}`}
+                  onClick={() => setAdjustData({ ...adjustData, type: 'remove' })}
+                >
+                  ➖ Retirer
+                </button>
+              </div>
+
+              <div className="form-group">
+                <label>Quantité ({currentItem.unite}) *</label>
+                <input
+                  type="number"
+                  required
+                  min="0.01"
+                  max={adjustData.type === 'remove' ? currentItem.quantite : undefined}
+                  step="0.01"
+                  value={adjustData.quantite}
+                  onChange={(e) => setAdjustData({ ...adjustData, quantite: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+
+              <div className="adjust-preview">
+                <span className="preview-label">Nouveau stock :</span>
+                <span className={`preview-value ${adjustData.type === 'add' ? 'positive' : 'negative'}`}>
+                  {adjustData.type === 'add'
+                    ? (currentItem.quantite + (adjustData.quantite || 0)).toFixed(2)
+                    : (currentItem.quantite - (adjustData.quantite || 0)).toFixed(2)
+                  } {currentItem.unite}
+                </span>
+              </div>
+
+              <div className="form-group">
+                <label>Raison</label>
+                <textarea
+                  value={adjustData.raison}
+                  onChange={(e) => setAdjustData({ ...adjustData, raison: e.target.value })}
+                  rows="2"
+                  placeholder={adjustData.type === 'add' ? 'Ex: Réception livraison, don...' : 'Ex: Perte, périmé, transfert...'}
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn-cancel" onClick={() => setShowAdjustModal(false)}>
+                  Annuler
+                </button>
+                <button type="submit" className={`btn-submit ${adjustData.type === 'add' ? 'btn-add-stock' : 'btn-remove-stock'}`}>
+                  {adjustData.type === 'add' ? '➕ Ajouter au stock' : '➖ Retirer du stock'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

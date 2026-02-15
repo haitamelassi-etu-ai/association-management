@@ -16,6 +16,7 @@ router.get('/:id', protect, foodStockController.getStockItem);
 router.put('/:id', protect, foodStockController.updateStockItem);
 router.delete('/:id', protect, foodStockController.deleteStockItem);
 router.post('/:id/consommer', protect, foodStockController.consommerStock);
+router.post('/:id/adjust', protect, foodStockController.adjustStock);
 router.get('/:id/plan', protect, foodStockController.getPlanConsommation);
 
 module.exports = router;

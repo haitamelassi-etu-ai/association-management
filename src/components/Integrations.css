@@ -1,0 +1,385 @@
+.integrations-page {
+  padding: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.integrations-header {
+  margin-bottom: 32px;
+}
+
+.integrations-header h2 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.integrations-header p {
+  margin: 0;
+  color: var(--text-secondary, #666);
+}
+
+.integration-message {
+  padding: 14px 18px;
+  border-radius: 10px;
+  margin-bottom: 24px;
+  animation: slideIn 0.3s ease;
+}
+
+.integration-message.success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.integration-message.error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* Grid */
+.integrations-grid {
+  display: grid;
+  gap: 20px;
+}
+
+/* Card */
+.integration-card {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s;
+}
+
+.integration-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color, #f0f0f0);
+}
+
+.integration-logo {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.integration-logo.google {
+  background: #fff8e1;
+}
+
+.integration-logo.whatsapp {
+  background: #e8f5e9;
+}
+
+.integration-logo.email {
+  background: #e3f2fd;
+}
+
+.integration-info {
+  flex: 1;
+}
+
+.integration-info h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+
+.integration-info p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, #888);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--border-color, #ddd);
+  border-radius: 28px;
+  transition: 0.3s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-switch input:checked + .slider {
+  background: var(--primary-color, #3498db);
+}
+
+.toggle-switch input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+/* Card Body */
+.card-body {
+  padding: 20px 24px;
+  animation: expandIn 0.3s ease;
+}
+
+@keyframes expandIn {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+  margin-bottom: 6px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid var(--border-color, #e0e0e0);
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.form-group input:focus {
+  border-color: var(--primary-color, #3498db);
+  outline: none;
+}
+
+/* Connect Buttons */
+.connect-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px;
+  border: 2px solid var(--border-color, #e0e0e0);
+  background: #fff;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.connect-btn:hover {
+  border-color: var(--primary-color, #3498db);
+  background: var(--primary-light, #f0f7ff);
+}
+
+.connect-btn img {
+  width: 20px;
+  height: 20px;
+}
+
+.connect-btn.google:hover {
+  border-color: #4285f4;
+  background: #f0f7ff;
+}
+
+/* Connected Status */
+.connected-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-badge {
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.status-badge.connected {
+  background: #d4edda;
+  color: #155724;
+}
+
+.disconnect-btn {
+  padding: 8px 16px;
+  border: 2px solid #e74c3c;
+  background: #fff;
+  color: #e74c3c;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.disconnect-btn:hover {
+  background: #e74c3c;
+  color: #fff;
+}
+
+/* Templates */
+.templates-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border-color, #e0e0e0);
+}
+
+.templates-section h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--text-secondary, #666);
+}
+
+.template-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.template-tag {
+  padding: 8px 14px;
+  background: var(--input-bg, #f5f5f5);
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.template-tag:hover {
+  background: var(--primary-light, #ebf5fb);
+  color: var(--primary-color, #3498db);
+}
+
+/* Help Link */
+.help-link {
+  display: inline-block;
+  margin-top: 12px;
+  color: var(--primary-color, #3498db);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.help-link:hover {
+  text-decoration: underline;
+}
+
+/* Footer */
+.integrations-footer {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.save-btn {
+  padding: 16px 32px;
+  background: var(--primary-color, #3498db);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: var(--primary-dark, #2980b9);
+  transform: translateY(-2px);
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Dark Mode */
+[data-theme="dark"] .integration-card {
+  background: var(--card-bg, #1e1e1e);
+}
+
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .connect-btn {
+  background: var(--input-bg, #2d2d2d);
+  border-color: var(--border-color, #404040);
+  color: var(--text-color, #e0e0e0);
+}
+
+[data-theme="dark"] .integration-logo.google {
+  background: rgba(255, 248, 225, 0.1);
+}
+
+[data-theme="dark"] .integration-logo.whatsapp {
+  background: rgba(232, 245, 233, 0.1);
+}
+
+[data-theme="dark"] .integration-logo.email {
+  background: rgba(227, 242, 253, 0.1);
+}
+
+[data-theme="dark"] .template-tag {
+  background: var(--input-bg, #2d2d2d);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .integrations-page {
+    padding: 16px;
+  }
+
+  .card-header {
+    flex-wrap: wrap;
+  }
+
+  .integration-info {
+    flex: 0 0 calc(100% - 90px);
+    order: 1;
+  }
+
+  .toggle-switch {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .template-tags {
+    justify-content: center;
+  }
+}

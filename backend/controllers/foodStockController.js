@@ -153,6 +153,63 @@ exports.updateStockItem = async (req, res) => {
   }
 };
 
+// Ajuster le stock (ajouter ou retirer)
+exports.adjustStock = async (req, res) => {
+  try {
+    const { quantite, type, raison } = req.body;
+    const item = await FoodStock.findById(req.params.id);
+
+    if (!item) {
+      return res.status(404).json({ message: 'Article non trouvé' });
+    }
+
+    if (!quantite || quantite <= 0) {
+      return res.status(400).json({ message: 'La quantité doit être supérieure à 0' });
+    }
+
+    if (type === 'add') {
+      item.quantite += quantite;
+    } else if (type === 'remove') {
+      if (quantite > item.quantite) {
+        return res.status(400).json({
+          message: 'Quantité à retirer supérieure au stock disponible',
+          disponible: item.quantite
+        });
+      }
+      item.quantite -= quantite;
+    } else {
+      return res.status(400).json({ message: 'Type doit être "add" ou "remove"' });
+    }
+
+    // Recalculer le statut
+    if (item.quantite <= 0) {
+      item.statut = 'critique';
+    } else if (item.quantite <= item.seuilCritique) {
+      item.statut = 'faible';
+    } else {
+      item.statut = 'disponible';
+    }
+
+    await item.save();
+
+    const action = type === 'add' ? 'Approvisionnement' : 'Retrait';
+    await notifyAdmins({
+      type: 'info',
+      title: `Stock Alimentaire - ${action}`,
+      message: `${item.nom}: ${type === 'add' ? '+' : '-'}${quantite} ${item.unite} (total: ${item.quantite})${raison ? ' - ' + raison : ''}`,
+      icon: type === 'add' ? '📦' : '📤',
+      link: '/professional/food-stock',
+      metadata: { foodStockId: item._id, action: type, quantite, raison },
+      createdBy: req.user.id
+    });
+
+    res.json(item);
+  } catch (error) {
+    console.error('Erreur ajustement stock:', error);
+    res.status(400).json({ message: 'Erreur lors de l\'ajustement', error: error.message });
+  }
+};
+
 // Consommer un article
 exports.consommerStock = async (req, res) => {
   try {
