@@ -744,28 +744,28 @@ const FoodStockManagement = () => {
               
               return (
                 <tr key={item._id}>
-                  <td>
+                  <td data-label="Nom">
                     <strong>{catInfo?.icon} {item.nom}</strong>
                     {item.emplacement && <div className="sub-text">{item.emplacement}</div>}
                   </td>
-                  <td>{catInfo?.label}</td>
-                  <td>
+                  <td data-label="Catégorie">{catInfo?.label}</td>
+                  <td data-label="Quantité">
                     <strong>{item.quantite}</strong> {item.unite}
                   </td>
-                  <td>{item.prix} DH</td>
-                  <td className="value">{(item.quantite * item.prix).toFixed(2)} DH</td>
-                  <td>{new Date(item.dateExpiration).toLocaleDateString('fr-FR')}</td>
-                  <td>
+                  <td data-label="Prix Unit.">{item.prix} DH</td>
+                  <td data-label="Valeur" className="value">{(item.quantite * item.prix).toFixed(2)} DH</td>
+                  <td data-label="Date Exp.">{new Date(item.dateExpiration).toLocaleDateString('fr-FR')}</td>
+                  <td data-label="Jours">
                     <span className={`days-badge ${daysRemaining < 3 ? 'urgent' : daysRemaining < 7 ? 'warning' : ''}`}>
                       {daysRemaining > 0 ? `${daysRemaining} j` : 'Expiré'}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="Statut">
                     <span className={`status-badge ${badge.class}`}>
                       {badge.text}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="Actions">
                     <div className="action-buttons">
                       <button 
                         className="btn-action adjust"

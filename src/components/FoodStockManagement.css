@@ -626,45 +626,482 @@
   background: #5568d3;
 }
 
-/* Responsive */
+/* ══════════════════════════════════════════════ */
+/* RESPONSIVE — Tablets (max-width: 768px)       */
+/* ══════════════════════════════════════════════ */
 @media (max-width: 768px) {
+  .food-stock-container {
+    padding: 10px;
+  }
+
   .food-stock-header {
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
+    padding: 15px;
+    text-align: center;
   }
 
   .food-stock-header h1 {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .header-actions button {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 15px;
+    gap: 12px;
+  }
+
+  .stat-icon {
+    font-size: 2rem;
+  }
+
+  .stat-content h3 {
+    font-size: 1.4rem;
+  }
+
+  .stat-content p {
+    font-size: 0.8rem;
+  }
+
+  .alerts-section {
+    grid-template-columns: 1fr;
   }
 
   .filters-bar {
     flex-direction: column;
+    padding: 12px;
+    gap: 10px;
   }
 
   .form-grid {
     grid-template-columns: 1fr;
   }
 
-  .stock-table {
-    font-size: 0.85rem;
-  }
-
-  .stock-table th,
-  .stock-table td {
-    padding: 10px 8px;
-  }
-
-  .action-buttons {
-    flex-wrap: wrap;
-  }
-
   .modal-content {
     width: 95%;
+    margin: 10px;
+    max-height: 95vh;
+    border-radius: 15px;
+  }
+
+  .modal-header {
+    padding: 18px 20px;
+    border-radius: 15px 15px 0 0;
+  }
+
+  .modal-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .stock-form,
+  .consume-form {
+    padding: 18px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions .btn-cancel,
+  .modal-actions .btn-submit {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Summary cards */
+  .stock-summary {
+    padding: 15px;
+    margin-top: 15px;
+  }
+
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .summary-value {
+    font-size: 1.5rem;
+  }
+
+  .summary-label {
+    font-size: 0.78rem;
+  }
+
+  /* Adjust modal */
+  .adjust-type-selector {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .type-btn {
+    padding: 12px;
+    font-size: 0.95rem;
+  }
+
+  .current-stock-info {
+    padding: 12px 15px;
+  }
+
+  .info-value {
+    font-size: 1.2rem;
+  }
+
+  .plan-content {
+    padding: 18px;
+  }
+}
+
+/* ══════════════════════════════════════════════ */
+/* RESPONSIVE — Phones (max-width: 576px)        */
+/* Table → Card layout                           */
+/* ══════════════════════════════════════════════ */
+@media (max-width: 576px) {
+  .food-stock-container {
+    padding: 8px;
+  }
+
+  .food-stock-header {
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+  }
+
+  .food-stock-header h1 {
+    font-size: 1.15rem;
   }
 
   .header-actions {
-    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .header-actions button {
+    padding: 8px 10px;
+    font-size: 0.78rem;
+    border-radius: 6px;
+    min-width: 0;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+
+  .stat-card {
+    padding: 12px 10px;
+    gap: 8px;
+    border-radius: 10px;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .stat-icon {
+    font-size: 1.6rem;
+  }
+
+  .stat-content h3 {
+    font-size: 1.2rem;
+  }
+
+  .stat-content p {
+    font-size: 0.75rem;
+  }
+
+  /* ── Table → Cards ── */
+  .stock-table-container {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .stock-table thead {
+    display: none;
+  }
+
+  .stock-table,
+  .stock-table tbody,
+  .stock-table tr,
+  .stock-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .stock-table tbody tr {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    padding: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: box-shadow 0.2s;
+  }
+
+  .stock-table tbody tr:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  .stock-table td {
+    padding: 6px 0;
+    border-bottom: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.88rem;
+  }
+
+  .stock-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #667eea;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    min-width: 100px;
+    flex-shrink: 0;
+  }
+
+  /* First td (name) — make it stand out as card title */
+  .stock-table td:first-child {
+    flex-direction: column;
+    align-items: flex-start;
+    padding-bottom: 10px;
+    margin-bottom: 6px;
+    border-bottom: 2px solid #f0f0f0;
+  }
+
+  .stock-table td:first-child::before {
+    display: none;
+  }
+
+  .stock-table td:first-child strong {
+    font-size: 1.05rem;
+    color: #2d3748;
+  }
+
+  /* Last td (actions) — full width centered */
+  .stock-table td:last-child {
     justify-content: center;
+    padding-top: 10px;
+    margin-top: 6px;
+    border-top: 2px solid #f0f0f0;
+  }
+
+  .stock-table td:last-child::before {
+    display: none;
+  }
+
+  .action-buttons {
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-action {
+    font-size: 1.2rem;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+  }
+
+  /* Summary */
+  .stock-summary {
+    padding: 12px;
+    margin-top: 12px;
+    border-radius: 12px;
+  }
+
+  .stock-summary h3 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .summary-card {
+    padding: 14px 10px;
+    border-radius: 10px;
+  }
+
+  .summary-value {
+    font-size: 1.3rem;
+  }
+
+  .summary-label {
+    font-size: 0.72rem;
+  }
+
+  /* Modal adjustments for small screens */
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 20px 20px 0 0;
+    margin: 0;
+  }
+
+  .modal-content.small {
+    max-width: 100%;
+  }
+
+  .modal-header {
+    border-radius: 20px 20px 0 0;
+    padding: 16px 18px;
+  }
+
+  .modal-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .stock-form,
+  .consume-form {
+    padding: 15px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+
+  .modal-actions {
+    padding-top: 15px;
+    gap: 10px;
+  }
+
+  .btn-cancel,
+  .btn-submit {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
+
+  /* Plan content */
+  .plan-content {
+    padding: 15px;
+  }
+
+  .plan-content h3 {
+    font-size: 1.1rem;
+  }
+
+  .plan-stats {
+    padding: 14px;
+  }
+
+  .plan-stat {
+    padding: 8px 0;
+    font-size: 0.88rem;
+  }
+
+  .plan-recommendation {
+    padding: 14px;
+  }
+
+  /* Adjust modal mobile */
+  .adjust-type-selector {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .type-btn {
+    padding: 10px 6px;
+    font-size: 0.88rem;
+    border-radius: 8px;
+  }
+
+  .current-stock-info {
+    padding: 10px 14px;
+    border-radius: 8px;
+  }
+
+  .info-label {
+    font-size: 0.88rem;
+  }
+
+  .info-value {
+    font-size: 1.1rem;
+  }
+
+  .adjust-preview {
+    padding: 10px 14px;
+    border-radius: 8px;
+  }
+
+  .preview-value {
+    font-size: 1.1rem;
+  }
+
+  /* Alerts */
+  .alerts-section {
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+
+  .alert-box {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .alert-box h3 {
+    font-size: 1rem;
+  }
+
+  .alert-box li {
+    padding: 8px;
+    font-size: 0.82rem;
+  }
+
+  /* Filters */
+  .filters-bar {
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+
+  .filter-select,
+  .filter-search {
+    padding: 10px;
+    font-size: 0.88rem;
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 30px 15px;
+  }
+
+  .empty-state p {
+    font-size: 0.95rem;
+  }
+
+  /* Loading */
+  .loading-spinner {
+    font-size: 1.2rem;
   }
 }
 
