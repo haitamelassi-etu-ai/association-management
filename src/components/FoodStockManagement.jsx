@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ExcelJS from 'exceljs';
@@ -398,14 +398,27 @@ const FoodStockManagement = () => {
     return { headers: { Authorization: `Bearer ${token}` } };
   };
 
-  // Charger les données
+  // Charger les données avec debounce pour la recherche
+  const debounceRef = useRef(null);
+  const isFirstLoad = useRef(true);
+
   useEffect(() => {
-    fetchData();
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
+      fetchData(true);
+      return;
+    }
+    // Debounce : attendre 400ms après le dernier changement
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchData(false);
+    }, 400);
+    return () => clearTimeout(debounceRef.current);
   }, [filters]);
 
-  const fetchData = async () => {
+  const fetchData = async (showLoader = false) => {
     try {
-      setLoading(true);
+      if (showLoader) setLoading(true);
       const params = new URLSearchParams();
       if (filters.statut) params.append('statut', filters.statut);
       if (filters.categorie) params.append('categorie', filters.categorie);
