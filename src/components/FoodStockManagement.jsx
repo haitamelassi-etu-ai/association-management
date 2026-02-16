@@ -395,6 +395,132 @@ const FoodStockManagement = () => {
     setTimeout(() => printWindow.print(), 500);
   };
 
+  // ═══════════════════════════════════════
+  // Imprimer Statistiques & Graphiques
+  // ═══════════════════════════════════════
+  const printCharts = () => {
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    // Capture all SVG charts from the DOM
+    const svgElements = document.querySelectorAll('.charts-container svg');
+    const svgStrings = [];
+    svgElements.forEach(svg => {
+      const clone = svg.cloneNode(true);
+      clone.setAttribute('width', '100%');
+      clone.setAttribute('height', svg.getAttribute('height') || '300');
+      svgStrings.push(clone.outerHTML);
+    });
+
+    // Build stats section
+    const statsTotal = statistics?.total || 0;
+    const statsValue = statistics?.valeurTotale?.toFixed(2) || '0.00';
+    const statusBreakdown = (statistics?.statuts || []).map(s => {
+      const labels = { disponible: '✓ Disponible', faible: '⚠ Faible', critique: '⚠ Critique', expire: '✗ Expiré' };
+      return `<div class="stat-item"><span class="stat-label">${labels[s._id] || s._id}</span><span class="stat-val">${s.count}</span></div>`;
+    }).join('');
+
+    const catBreakdown = (chartData?.parCategorie || []).map(c => {
+      const label = categoryLabels[c._id] || c._id;
+      return `<tr><td>${label}</td><td>${c.count}</td><td>${c.valeur.toFixed(2)} DH</td></tr>`;
+    }).join('');
+
+    // Chart titles to pair with SVGs
+    const chartTitles = [
+      '🥧 Répartition par Catégorie',
+      '🔴 Répartition par Statut',
+      '💰 Valeur du Stock par Catégorie (DH)',
+      '🏆 Top 10 Articles (Quantité)',
+      '📈 Achats par Mois'
+    ];
+
+    const chartBlocks = svgStrings.map((svg, i) => `
+      <div class="chart-block">
+        <h3>${chartTitles[i] || 'Graphique ' + (i + 1)}</h3>
+        <div class="chart-svg">${svg}</div>
+      </div>
+    `).join('');
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="utf-8">
+        <title>Statistiques & Graphiques — Stock Alimentaire</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 30px; color: #333; }
+          .header { text-align: center; margin-bottom: 25px; border-bottom: 3px solid #667eea; padding-bottom: 15px; }
+          .header h1 { font-size: 22px; color: #4a148c; margin-bottom: 5px; }
+          .header h2 { font-size: 16px; color: #667eea; margin-bottom: 10px; }
+          .header p { font-size: 12px; color: #666; }
+          .stats-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+          .stat-box { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; text-align: center; }
+          .stat-box .big { font-size: 28px; font-weight: 800; color: #667eea; }
+          .stat-box .lbl { font-size: 12px; color: #718096; margin-top: 5px; }
+          .breakdown { margin: 20px 0; }
+          .breakdown h3 { font-size: 14px; color: #2d3748; margin-bottom: 10px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; }
+          .stat-items { display: flex; gap: 15px; flex-wrap: wrap; }
+          .stat-item { background: #f0f4ff; padding: 8px 16px; border-radius: 8px; display: flex; gap: 10px; font-size: 13px; }
+          .stat-label { color: #4a5568; }
+          .stat-val { font-weight: 700; color: #667eea; }
+          table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+          th { background: #667eea; color: white; padding: 8px; text-align: center; }
+          td { padding: 6px 8px; border: 1px solid #e2e8f0; text-align: center; }
+          tr:nth-child(even) { background: #f7fafc; }
+          .charts-print { margin-top: 25px; }
+          .chart-block { page-break-inside: avoid; margin-bottom: 30px; background: #fafbfc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; }
+          .chart-block h3 { font-size: 14px; color: #2d3748; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #f0f0f0; }
+          .chart-svg { text-align: center; overflow: hidden; }
+          .chart-svg svg { max-width: 100%; height: auto; }
+          .footer { text-align: center; margin-top: 30px; font-size: 10px; color: #999; border-top: 1px solid #ddd; padding-top: 10px; }
+          @media print {
+            body { padding: 15px; }
+            .chart-block { break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="/images/logo.png" alt="Logo" style="width:70px;height:70px;margin-bottom:8px;" />
+          <h1>ADDEL ALWAREF</h1>
+          <h2>📊 Statistiques & Graphiques — Stock Alimentaire</h2>
+          <p>Date d'impression : ${dateStr}</p>
+        </div>
+
+        <div class="stats-section">
+          <div class="stat-box"><div class="big">${statsTotal}</div><div class="lbl">Total Articles</div></div>
+          <div class="stat-box"><div class="big">${statsValue} DH</div><div class="lbl">Valeur Totale</div></div>
+          <div class="stat-box"><div class="big">${(statistics?.statuts || []).find(s => s._id === 'disponible')?.count || 0}</div><div class="lbl">Disponibles</div></div>
+          <div class="stat-box"><div class="big">${(statistics?.statuts || []).find(s => s._id === 'critique')?.count || 0}</div><div class="lbl">Critiques</div></div>
+        </div>
+
+        <div class="breakdown">
+          <h3>📋 Répartition par Statut</h3>
+          <div class="stat-items">${statusBreakdown}</div>
+        </div>
+
+        <div class="breakdown">
+          <h3>📦 Détail par Catégorie</h3>
+          <table><thead><tr><th>Catégorie</th><th>Articles</th><th>Valeur</th></tr></thead><tbody>${catBreakdown}</tbody></table>
+        </div>
+
+        <div class="charts-print">
+          <h3 style="font-size:16px;color:#2d3748;margin-bottom:15px;">📊 Graphiques</h3>
+          ${chartBlocks}
+        </div>
+
+        <div class="footer">
+          ADDEL ALWAREF — Rapport statistique généré le ${dateStr}
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 600);
+  };
+
   // Récupérer le token
   const getAuthHeaders = () => {
     const token = localStorage.getItem('professionalToken') || localStorage.getItem('token');
@@ -987,6 +1113,11 @@ const FoodStockManagement = () => {
             <div className="loading-spinner" style={{minHeight:'200px',color:'#333'}}>Chargement des graphiques...</div>
           ) : (
             <>
+              <div className="charts-toolbar">
+                <button className="btn-print" onClick={printCharts}>
+                  🖨️ Imprimer Statistiques & Graphiques
+                </button>
+              </div>
               {/* Row 1: Pie Charts */}
               <div className="charts-row">
                 <div className="chart-card">

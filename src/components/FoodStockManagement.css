@@ -1384,6 +1384,12 @@
   gap: 20px;
 }
 
+.charts-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 5px;
+}
+
 .charts-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
