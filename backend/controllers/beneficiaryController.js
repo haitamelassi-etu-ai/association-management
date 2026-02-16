@@ -254,7 +254,18 @@ exports.importFromExcel = async (req, res) => {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet);
+    
+    // Find the actual header row (skip empty rows at top)
+    const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+    let headerRowIdx = 0;
+    for (let r = 0; r < Math.min(rawData.length, 10); r++) {
+      const row = rawData[r];
+      const nonEmpty = row.filter(c => c && c.toString().trim() !== '').length;
+      if (nonEmpty >= 3) { headerRowIdx = r; break; }
+    }
+    
+    // Re-parse using the correct header row
+    const data = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIdx, defval: '' });
 
     if (!data || data.length === 0) {
       return res.status(400).json({ success: false, message: 'Le fichier est vide' });
@@ -285,110 +296,85 @@ exports.importFromExcel = async (req, res) => {
       'motif': 'motifEntree', 'Motif': 'motifEntree', 'سبب الدخول': 'motifEntree',
       'chambre': 'roomNumber', 'Chambre': 'roomNumber', 'رقم الغرفة': 'roomNumber',
       'lit': 'bedNumber', 'Lit': 'bedNumber', 'رقم السرير': 'bedNumber',
-      'ر.ت': 'numeroDossier'
+      'ر.ت': 'numeroOrdre'
     };
+
+    // Helper: parse Excel serial number or date string
+    function parseFlexDate(val) {
+      if (!val) return null;
+      const s = val.toString().trim();
+      if (!s) return null;
+
+      // Excel serial number (5 digits)
+      const num = Number(s);
+      if (!isNaN(num) && num > 10000 && num < 100000) {
+        const excelEpoch = new Date(1899, 11, 30);
+        const d = new Date(excelEpoch.getTime() + num * 86400000);
+        if (d.getFullYear() > 1900 && d.getFullYear() < 2030) return d;
+      }
+
+      // Year only (e.g. "1976")
+      if (/^\d{4}$/.test(s)) return new Date(parseInt(s), 0, 1);
+
+      // DD/MM/YYYY
+      let m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+      if (m) {
+        let yr = parseInt(m[3]); if (yr < 100) yr += 1900;
+        return new Date(yr, parseInt(m[2]) - 1, parseInt(m[1]));
+      }
+
+      // YYYY.MM.DD or YYYY-MM-DD (handle typos like day=027)
+      m = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,3})$/);
+      if (m) {
+        const day = parseInt(m[3]) > 31 ? 1 : parseInt(m[3]);
+        return new Date(parseInt(m[1]), parseInt(m[2]) - 1, day);
+      }
+
+      // Fallback
+      const d = new Date(s);
+      return (d && !isNaN(d.getTime())) ? d : null;
+    }
 
     for (let i = 0; i < data.length; i++) {
       try {
         const row = data[i];
         const mapped = {};
 
-        // Map columns
+        // Map columns (trim keys to handle extra spaces in Arabic headers)
         for (const [key, value] of Object.entries(row)) {
-          const field = columnMap[key.trim()];
-          if (field) {
+          const trimmedKey = key.trim();
+          const field = columnMap[trimmedKey];
+          if (field && value !== undefined && value !== '') {
             mapped[field] = value;
           }
         }
 
+        // Handle nomComplet → split into nom/prenom
         if (!mapped.nom || !mapped.prenom) {
-          // Try to split nomComplet
           if (mapped.nomComplet) {
             const parts = mapped.nomComplet.toString().trim().split(/\s+/);
             if (parts.length >= 2) {
               mapped.prenom = parts[0];
               mapped.nom = parts.slice(1).join(' ');
-            } else {
-              mapped.nom = mapped.nomComplet;
-              mapped.prenom = '';
+            } else if (parts.length === 1) {
+              mapped.nom = parts[0];
+              mapped.prenom = parts[0]; // Use same as nom if single word
             }
           }
-          if (!mapped.nom) {
-            results.errors.push(`Ligne ${i + 2}: Nom manquant`);
+          if (!mapped.nom && !mapped.prenom) {
+            results.errors.push(`Ligne ${i + 2}: Nom ou prénom manquant`);
             results.skipped++;
             continue;
           }
+          // Fill missing one
+          if (!mapped.nom) mapped.nom = mapped.prenom;
+          if (!mapped.prenom) mapped.prenom = mapped.nom;
         }
 
-        // Parse date (handles DD/MM/YYYY, YYYY.MM.DD, YYYY-MM-DD, just YYYY)
-        if (mapped.dateNaissance) {
-          const raw = mapped.dateNaissance.toString().trim();
-          let d;
-          // DD/MM/YYYY
-          const dmy = raw.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
-          if (dmy) {
-            d = new Date(parseInt(dmy[3]), parseInt(dmy[2]) - 1, parseInt(dmy[1]));
-          }
-          // YYYY.MM.DD or YYYY-MM-DD or YYYY/MM/DD
-          if (!d || isNaN(d.getTime())) {
-            const ymd = raw.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
-            if (ymd) {
-              d = new Date(parseInt(ymd[1]), parseInt(ymd[2]) - 1, parseInt(ymd[3]));
-            }
-          }
-          // Just year
-          if (!d || isNaN(d.getTime())) {
-            const yearOnly = raw.match(/^(\d{4})$/);
-            if (yearOnly) {
-              d = new Date(parseInt(yearOnly[1]), 0, 1);
-            }
-          }
-          // Fallback
-          if (!d || isNaN(d.getTime())) {
-            d = new Date(raw);
-          }
-          mapped.dateNaissance = (d && !isNaN(d.getTime())) ? d : undefined;
-        }
-
-        // Parse dateEntree (same flexible parsing)
-        if (mapped.dateEntree) {
-          const raw = mapped.dateEntree.toString().trim();
-          let d;
-          const dmy = raw.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
-          if (dmy) {
-            d = new Date(parseInt(dmy[3]), parseInt(dmy[2]) - 1, parseInt(dmy[1]));
-          }
-          if (!d || isNaN(d.getTime())) {
-            const ymd = raw.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
-            if (ymd) {
-              d = new Date(parseInt(ymd[1]), parseInt(ymd[2]) - 1, parseInt(ymd[3]));
-            }
-          }
-          if (!d || isNaN(d.getTime())) {
-            d = new Date(raw);
-          }
-          mapped.dateEntree = (d && !isNaN(d.getTime())) ? d : new Date();
-        }
-
-        // Parse dateSortie (same flexible parsing)
-        if (mapped.dateSortie) {
-          const raw = mapped.dateSortie.toString().trim();
-          let d;
-          const dmy = raw.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
-          if (dmy) {
-            d = new Date(parseInt(dmy[3]), parseInt(dmy[2]) - 1, parseInt(dmy[1]));
-          }
-          if (!d || isNaN(d.getTime())) {
-            const ymd = raw.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
-            if (ymd) {
-              d = new Date(parseInt(ymd[1]), parseInt(ymd[2]) - 1, parseInt(ymd[3]));
-            }
-          }
-          if (!d || isNaN(d.getTime())) {
-            d = new Date(raw);
-          }
-          mapped.dateSortie = (d && !isNaN(d.getTime())) ? d : undefined;
-        }
+        // Parse all dates with flexible parser (handles serial numbers, YYYY.MM.DD, DD/MM/YYYY, year-only)
+        mapped.dateNaissance = parseFlexDate(mapped.dateNaissance);
+        mapped.dateEntree = parseFlexDate(mapped.dateEntree) || new Date();
+        mapped.dateSortie = parseFlexDate(mapped.dateSortie) || undefined;
 
         // Normalize sexe
         if (mapped.sexe) {
@@ -402,29 +388,45 @@ exports.importFromExcel = async (req, res) => {
         if (mapped.situationType) {
           const st = mapped.situationType.toString().trim();
           // Handle all spacing variations of متشرد + متسول
-          if (/متشرد\s*\+\s*متسول/.test(st) || st === 'متشرد+متسول') {
+          if (/متشرد.*متسول|متسول.*متشرد/.test(st)) {
             mapped.situationType = 'mutasharrid_mutasawwil';
-          } else if (/^متشرد$/.test(st)) {
+          } else if (/^متشرد$|^كتشرد$|^متسرد$/.test(st)) {
             mapped.situationType = 'mutasharrid';
-          } else if (st === 'التسول' || st === 'تسول') {
-            mapped.situationType = 'tasawwul';
           } else if (st === 'تشرد') {
             mapped.situationType = 'tasharrud';
-          } else {
+          } else if (/التسول|^متسول$|تسول/.test(st)) {
+            mapped.situationType = 'tasawwul';
+          } else if (/عبر سبيل|عابر سبيل/.test(st)) {
             mapped.situationType = 'autre';
+          } else if (st === 'مغادرة') {
+            mapped.situationType = 'mutasharrid';
+          } else {
+            mapped.situationType = 'mutasharrid';
           }
         }
 
         // Normalize maBaadAlIwaa (ما بعد الايواء)
         if (mapped.maBaadAlIwaa) {
           const mb = mapped.maBaadAlIwaa.toString().trim();
-          if (mb === 'نزيل بالمركز' || mb === 'نزيل') mapped.maBaadAlIwaa = 'nazil_bilmarkaz';
+          if (/نزيل/.test(mb)) mapped.maBaadAlIwaa = 'nazil_bilmarkaz';
           else if (mb === 'مغادرة') mapped.maBaadAlIwaa = 'mughAdara';
           else if (/ادماج|إدماج/.test(mb)) mapped.maBaadAlIwaa = 'idmaj_usari';
-          else if (mb === 'فرار') mapped.maBaadAlIwaa = 'firAr';
+          else if (mb === 'فرار' || mb === 'فر ار') mapped.maBaadAlIwaa = 'firAr';
           else if (mb === 'طرد') mapped.maBaadAlIwaa = 'tard';
           else if (mb === 'وفاة') mapped.maBaadAlIwaa = 'wafat';
-          // Leave as-is if doesn't match (will be stored as string)
+          else if (/إحالة|احالة|سافر/.test(mb)) mapped.maBaadAlIwaa = 'mughAdara';
+          else mapped.maBaadAlIwaa = 'nazil_bilmarkaz';
+        }
+
+        // Set statut based on maBaadAlIwaa
+        if (mapped.maBaadAlIwaa) {
+          if (mapped.maBaadAlIwaa === 'nazil_bilmarkaz') mapped.statut = 'heberge';
+          else mapped.statut = 'sorti';
+        }
+
+        // Store numeroOrdre
+        if (mapped.numeroOrdre) {
+          mapped.numeroOrdre = parseInt(mapped.numeroOrdre) || 0;
         }
 
         // Normalize situation familiale
