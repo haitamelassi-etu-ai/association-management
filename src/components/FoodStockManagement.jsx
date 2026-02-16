@@ -831,37 +831,29 @@ const FoodStockManagement = () => {
       </div>
 
       {/* Summary Section */}
-      {stockItems.length > 0 && (
+      {statistics && (
         <div className="stock-summary">
           <h3>📋 Résumé Général</h3>
           <div className="summary-cards">
             <div className="summary-card total">
-              <span className="summary-value">{stockItems.length}</span>
+              <span className="summary-value">{statistics.total || 0}</span>
               <span className="summary-label">Total Produits</span>
             </div>
             <div className="summary-card critique">
               <span className="summary-value">
-                {stockItems.filter(i => i.quantite === 0).length}
+                {(statistics.statuts || []).find(s => s._id === 'critique')?.count || 0}
               </span>
               <span className="summary-label">🔴 Critiques</span>
             </div>
             <div className="summary-card expire">
               <span className="summary-value">
-                {stockItems.filter(i => {
-                  if (i.quantite === 0) return false;
-                  const d = i.dateExpiration ? Math.ceil((new Date(i.dateExpiration) - new Date()) / 86400000) : 999;
-                  return d < 30;
-                }).length}
+                {(statistics.statuts || []).find(s => s._id === 'faible')?.count || 0}
               </span>
               <span className="summary-label">🟠 Expire &lt; 30j</span>
             </div>
             <div className="summary-card ok">
               <span className="summary-value">
-                {stockItems.filter(i => {
-                  if (i.quantite === 0) return false;
-                  const d = i.dateExpiration ? Math.ceil((new Date(i.dateExpiration) - new Date()) / 86400000) : 999;
-                  return d >= 30;
-                }).length}
+                {(statistics.statuts || []).find(s => s._id === 'disponible')?.count || 0}
               </span>
               <span className="summary-label">🟢 Disponibles</span>
             </div>
