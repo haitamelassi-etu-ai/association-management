@@ -441,7 +441,7 @@ function Beneficiaries() {
       const dataToExport = filterStatut === 'all' ? beneficiaries : filteredBeneficiaries
       dataToExport.forEach((b, idx) => {
         const row = ws.addRow([
-          idx + 1,
+          b.numeroOrdre || (idx + 1),
           `${b.prenom || ''} ${b.nom || ''}`.trim(),
           b.dateNaissance ? new Date(b.dateNaissance).toLocaleDateString('fr-FR') : '',
           b.lieuNaissance || '',
@@ -694,7 +694,7 @@ function Beneficiaries() {
                 <tbody>
                   {filteredBeneficiaries.map((b, idx) => (
                     <tr key={b._id}>
-                      <td>{idx + 1}</td>
+                      <td>{b.numeroOrdre || (idx + 1)}</td>
                       <td>
                         <div className="beneficiary-name">
                           <div className={`beneficiary-avatar ${b.sexe === 'femme' ? 'avatar-femme' : ''}`}>

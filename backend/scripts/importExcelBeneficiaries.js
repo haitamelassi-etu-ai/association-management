@@ -175,7 +175,11 @@ async function importData() {
       const dateSortie = parseDate(row[7]);
       const dateNaissance = parseDate(row[19]);
 
+      // Get serial number from Excel col 21, fallback to sequential
+      const excelNum = row[21] ? parseInt(row[21]) : 0;
+
       const entry = {
+        numeroOrdre: excelNum || (beneficiaries.length + 1),
         nom: nom || 'غير معروف',
         prenom: prenom || fullName,
         dateNaissance,

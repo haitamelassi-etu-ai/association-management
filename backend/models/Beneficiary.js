@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const beneficiarySchema = new mongoose.Schema({
+  // ─── Numéro d'ordre ───
+  numeroOrdre: {
+    type: Number,
+    default: 0
+  },
   // ─── Informations personnelles ───
   nom: {
     type: String,
