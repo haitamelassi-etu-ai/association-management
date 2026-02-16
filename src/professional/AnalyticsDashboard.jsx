@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, cloneElement } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -7,20 +7,6 @@ import {
 } from 'recharts';
 import { API_URL } from '../utils/api';
 import './AnalyticsDashboard.css';
-
-const PrintContext = createContext(false);
-
-const PrintChart = ({ children, height = 300 }) => {
-  const printMode = useContext(PrintContext);
-  if (printMode) {
-    return (
-      <div style={{ width: 900, height }}>
-        {cloneElement(children, { width: 900, height })}
-      </div>
-    );
-  }
-  return <ResponsiveContainer width="100%" height={height}>{children}</ResponsiveContainer>;
-};
 
 const PALETTE = {
   primary: ['#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16'],
@@ -65,6 +51,57 @@ function AnalyticsDashboard() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
   const [printMode, setPrintMode] = useState(false);
+  const printRef = useRef(null);
+
+  const handlePrint = () => {
+    setPrintMode(true);
+  };
+
+  // When printMode activates: wait for all recharts SVGs to render, then print
+  useEffect(() => {
+    if (!printMode) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 60; // 60 × 50ms = 3s max wait
+
+    const waitForCharts = () => {
+      if (cancelled) return;
+      attempts++;
+
+      // Count all recharts-surface SVGs that have real rendered content
+      const container = printRef.current || document;
+      const svgs = container.querySelectorAll('.recharts-surface');
+      const allReady = svgs.length >= 6 && Array.from(svgs).every(svg => {
+        const w = parseFloat(svg.getAttribute('width'));
+        const h = parseFloat(svg.getAttribute('height'));
+        return w > 50 && h > 50;
+      });
+
+      if (allReady || attempts >= maxAttempts) {
+        // One final rAF to ensure paint is flushed
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (!cancelled) window.print();
+          });
+        });
+      } else {
+        setTimeout(waitForCharts, 50);
+      }
+    };
+
+    // Start polling after React commit + first paint
+    requestAnimationFrame(() => {
+      setTimeout(waitForCharts, 100);
+    });
+
+    const onAfterPrint = () => { setPrintMode(false); };
+    window.addEventListener('afterprint', onAfterPrint);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('afterprint', onAfterPrint);
+    };
+  }, [printMode]);
 
   useEffect(() => {
     const professionalUser = localStorage.getItem('professionalUser');
@@ -89,22 +126,6 @@ function AnalyticsDashboard() {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (!printMode) return;
-    const timer = setTimeout(() => {
-      window.print();
-      setPrintMode(false);
-    }, 800);
-    const onAfterPrint = () => setPrintMode(false);
-    window.addEventListener('afterprint', onAfterPrint);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('afterprint', onAfterPrint);
-    };
-  }, [printMode]);
-
-  const handlePrint = () => setPrintMode(true);
 
   if (loading) return (
     <div className="analytics-loading">
@@ -134,8 +155,7 @@ function AnalyticsDashboard() {
   ];
 
   return (
-    <PrintContext.Provider value={printMode}>
-    <div className={`analytics-dashboard${printMode ? ' print-mode' : ''}`} dir="rtl">
+    <div className={`analytics-dashboard ${printMode ? 'print-mode' : ''}`} dir="rtl" ref={printRef}>
       {/* Header */}
       <div className="analytics-header">
         <div className="header-title">
@@ -143,9 +163,7 @@ function AnalyticsDashboard() {
           <p className="header-subtitle">تحليل شامل لبيانات المستفيدين</p>
         </div>
         <div className="header-actions-analytics">
-          <button onClick={handlePrint} className="btn-print" disabled={printMode}>
-            {printMode ? '⏳ جاري التحضير...' : '🖨️ طباعة التقارير'}
-          </button>
+          <button onClick={handlePrint} className="btn-print">🖨️ طباعة التقارير</button>
           <button onClick={fetchData} className="btn-refresh">🔄 تحديث</button>
         </div>
       </div>
@@ -190,29 +208,32 @@ function AnalyticsDashboard() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="analytics-tabs">
-        {tabs.map(t => (
-          <button key={t.id} className={`tab-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
-            <span className="tab-icon">{t.icon}</span>
-            <span className="tab-label">{t.label}</span>
-          </button>
-        ))}
-      </div>
+      {!printMode && (
+        <div className="analytics-tabs">
+          {tabs.map(t => (
+            <button key={t.id} className={`tab-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
+              <span className="tab-icon">{t.icon}</span>
+              <span className="tab-label">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Tab Content */}
       <div className="tab-content">
 
         {/* ===== OVERVIEW ===== */}
         {(activeTab === 'overview' || printMode) && (
+        <div className="tab-panel">
+          {printMode && <h2 className="print-section-title">📊 نظرة عامة</h2>}
           <div className="charts-section">
-            {printMode && <h2 className="print-section-title">نظرة عامة</h2>}
             <div className="charts-row">
               <div className="chart-card">
                 <div className="chart-header">
                   <h3>🏠 مابعد الايواء</h3>
                   <span className="chart-badge">{maBaad.length} فئات</span>
                 </div>
-                <PrintChart height={320}>
+                <ResponsiveContainer width="100%" height={320}>
                   <PieChart>
                     <Pie data={maBaad} cx="50%" cy="50%" outerRadius={110} innerRadius={50} dataKey="value"
                       label={renderCustomLabel} labelLine={false}>
@@ -220,7 +241,7 @@ function AnalyticsDashboard() {
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
                   </PieChart>
-                </PrintChart>
+                </ResponsiveContainer>
                 <div className="chart-legend-list">
                   {maBaad.map((d, i) => (
                     <div key={i} className="legend-item">
@@ -237,7 +258,7 @@ function AnalyticsDashboard() {
                   <h3>📋 نوع الوضعية</h3>
                   <span className="chart-badge">{situation.length} أنواع</span>
                 </div>
-                <PrintChart height={320}>
+                <ResponsiveContainer width="100%" height={320}>
                   <PieChart>
                     <Pie data={situation} cx="50%" cy="50%" outerRadius={110} innerRadius={50} dataKey="value"
                       label={renderCustomLabel} labelLine={false}>
@@ -245,7 +266,7 @@ function AnalyticsDashboard() {
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
                   </PieChart>
-                </PrintChart>
+                </ResponsiveContainer>
                 <div className="chart-legend-list">
                   {situation.map((d, i) => (
                     <div key={i} className="legend-item">
@@ -261,7 +282,7 @@ function AnalyticsDashboard() {
             <div className="charts-row">
               <div className="chart-card chart-narrow">
                 <div className="chart-header"><h3>🪪 البطاقة الوطنية</h3></div>
-                <PrintChart height={250}>
+                <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
                     <Pie data={cin} cx="50%" cy="50%" outerRadius={90} innerRadius={40} dataKey="value"
                       label={renderCustomLabel} labelLine={false}>
@@ -270,12 +291,12 @@ function AnalyticsDashboard() {
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
                   </PieChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
 
               <div className="chart-card chart-wide">
                 <div className="chart-header"><h3>📈 الدخول مقابل الخروج حسب السنة</h3></div>
-                <PrintChart height={280}>
+                <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={entryVsExit} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
@@ -285,20 +306,21 @@ function AnalyticsDashboard() {
                     <Bar dataKey="entries" name="الدخول" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="exits" name="الخروج" fill="#f97316" radius={[4, 4, 0, 0]} />
                   </BarChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </div>
-        )}
+        </div>)}
 
         {/* ===== DEMOGRAPHICS ===== */}
         {(activeTab === 'demographics' || printMode) && (
+        <div className="tab-panel">
+          {printMode && <h2 className="print-section-title">👥 الفئات العمرية</h2>}
           <div className="charts-section">
-            {printMode && <h2 className="print-section-title">الفئات العمرية والديموغرافيا</h2>}
             <div className="charts-row">
               <div className="chart-card chart-full">
                 <div className="chart-header"><h3>🎂 التوزيع حسب الفئات العمرية</h3></div>
-                <PrintChart height={350}>
+                <ResponsiveContainer width="100%" height={350}>
                   <BarChart data={age} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="name" stroke="#6b7280" fontSize={13} />
@@ -308,13 +330,13 @@ function AnalyticsDashboard() {
                       {age.map((_, i) => <Cell key={i} fill={PALETTE.age[i % PALETTE.age.length]} />)}
                     </Bar>
                   </BarChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
             </div>
             <div className="charts-row">
               <div className="chart-card">
                 <div className="chart-header"><h3>📊 نسب الفئات العمرية</h3></div>
-                <PrintChart height={320}>
+                <ResponsiveContainer width="100%" height={320}>
                   <PieChart>
                     <Pie data={age} cx="50%" cy="50%" outerRadius={110} innerRadius={50} dataKey="value"
                       label={renderCustomLabel} labelLine={false}>
@@ -322,7 +344,7 @@ function AnalyticsDashboard() {
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
                   </PieChart>
-                </PrintChart>
+                </ResponsiveContainer>
                 <div className="chart-legend-list">
                   {age.map((d, i) => (
                     <div key={i} className="legend-item">
@@ -336,7 +358,7 @@ function AnalyticsDashboard() {
 
               <div className="chart-card">
                 <div className="chart-header"><h3>⏱️ مدة الإقامة</h3></div>
-                <PrintChart height={320}>
+                <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={stayDuration} layout="vertical" margin={{ top: 10, right: 30, left: 80, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
@@ -344,20 +366,21 @@ function AnalyticsDashboard() {
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="value" name="العدد" fill="#8b5cf6" radius={[0, 6, 6, 0]} />
                   </BarChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </div>
-        )}
+        </div>)}
 
         {/* ===== STATUS ===== */}
         {(activeTab === 'status' || printMode) && (
+        <div className="tab-panel">
+          {printMode && <h2 className="print-section-title">📋 الحالة والوضعية</h2>}
           <div className="charts-section">
-            {printMode && <h2 className="print-section-title">الحالة والوضعية</h2>}
             <div className="charts-row">
               <div className="chart-card">
                 <div className="chart-header"><h3>🏠 مابعد الايواء - تفصيل</h3></div>
-                <PrintChart height={350}>
+                <ResponsiveContainer width="100%" height={350}>
                   <BarChart data={maBaad} layout="vertical" margin={{ top: 10, right: 30, left: 100, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
@@ -367,12 +390,12 @@ function AnalyticsDashboard() {
                       {maBaad.map((_, i) => <Cell key={i} fill={PALETTE.maBaad[i % PALETTE.maBaad.length]} />)}
                     </Bar>
                   </BarChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
 
               <div className="chart-card">
                 <div className="chart-header"><h3>📋 نوع الوضعية - تفصيل</h3></div>
-                <PrintChart height={350}>
+                <ResponsiveContainer width="100%" height={350}>
                   <BarChart data={situation} layout="vertical" margin={{ top: 10, right: 30, left: 120, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
@@ -382,7 +405,7 @@ function AnalyticsDashboard() {
                       {situation.map((_, i) => <Cell key={i} fill={PALETTE.primary[i % PALETTE.primary.length]} />)}
                     </Bar>
                   </BarChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
@@ -401,16 +424,17 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        )}
+        </div>)}
 
         {/* ===== HEALTH ===== */}
         {(activeTab === 'health' || printMode) && (
+        <div className="tab-panel">
+          {printMode && <h2 className="print-section-title">🏥 الصحة</h2>}
           <div className="charts-section">
-            {printMode && <h2 className="print-section-title">الصحة</h2>}
             <div className="charts-row">
               <div className="chart-card chart-full">
                 <div className="chart-header"><h3>🏥 توزيع الحالة الصحية</h3></div>
-                <PrintChart height={400}>
+                <ResponsiveContainer width="100%" height={400}>
                   <BarChart data={health} layout="vertical" margin={{ top: 10, right: 30, left: 120, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
@@ -420,14 +444,14 @@ function AnalyticsDashboard() {
                       {health.map((_, i) => <Cell key={i} fill={PALETTE.health[i % PALETTE.health.length]} />)}
                     </Bar>
                   </BarChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
             <div className="charts-row">
               <div className="chart-card">
                 <div className="chart-header"><h3>📊 نسب الحالة الصحية</h3></div>
-                <PrintChart height={350}>
+                <ResponsiveContainer width="100%" height={350}>
                   <PieChart>
                     <Pie data={health.slice(0, 6)} cx="50%" cy="50%" outerRadius={120} innerRadius={50} dataKey="value"
                       label={renderCustomLabel} labelLine={false}>
@@ -435,7 +459,7 @@ function AnalyticsDashboard() {
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
                   </PieChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
 
               <div className="chart-card">
@@ -462,16 +486,17 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        )}
+        </div>)}
 
         {/* ===== GEOGRAPHY ===== */}
         {(activeTab === 'geography' || printMode) && (
+        <div className="tab-panel">
+          {printMode && <h2 className="print-section-title">🗺️ التوزيع الجغرافي</h2>}
           <div className="charts-section">
-            {printMode && <h2 className="print-section-title">التوزيع الجغرافي</h2>}
             <div className="charts-row">
               <div className="chart-card">
                 <div className="chart-header"><h3>🗺️ مكان التدخل</h3></div>
-                <PrintChart height={350}>
+                <ResponsiveContainer width="100%" height={350}>
                   <BarChart data={lieuIntervention} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
@@ -481,7 +506,7 @@ function AnalyticsDashboard() {
                       {lieuIntervention.map((_, i) => <Cell key={i} fill={PALETTE.lieu[i % PALETTE.lieu.length]} />)}
                     </Bar>
                   </BarChart>
-                </PrintChart>
+                </ResponsiveContainer>
                 <div className="chart-legend-list">
                   {lieuIntervention.map((d, i) => (
                     <div key={i} className="legend-item">
@@ -495,7 +520,7 @@ function AnalyticsDashboard() {
 
               <div className="chart-card">
                 <div className="chart-header"><h3>🏛️ الجهة الموجهة</h3></div>
-                <PrintChart height={350}>
+                <ResponsiveContainer width="100%" height={350}>
                   <BarChart data={entiteOrientatrice} layout="vertical" margin={{ top: 10, right: 30, left: 140, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
@@ -503,14 +528,14 @@ function AnalyticsDashboard() {
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="value" name="العدد" fill="#0ea5e9" radius={[0, 6, 6, 0]} />
                   </BarChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
             <div className="charts-row">
               <div className="chart-card chart-full">
                 <div className="chart-header"><h3>🏙️ أهم مدن الازدياد (أعلى 20)</h3></div>
-                <PrintChart height={400}>
+                <ResponsiveContainer width="100%" height={400}>
                   <BarChart data={birthPlace} layout="vertical" margin={{ top: 10, right: 30, left: 120, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
@@ -518,20 +543,21 @@ function AnalyticsDashboard() {
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="value" name="العدد" fill="#14b8a6" radius={[0, 6, 6, 0]} />
                   </BarChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </div>
-        )}
+        </div>)}
 
         {/* ===== TIMELINE ===== */}
         {(activeTab === 'timeline' || printMode) && (
+        <div className="tab-panel">
+          {printMode && <h2 className="print-section-title">📈 التطور الزمني</h2>}
           <div className="charts-section">
-            {printMode && <h2 className="print-section-title">التطور الزمني</h2>}
             <div className="charts-row">
               <div className="chart-card chart-full">
                 <div className="chart-header"><h3>📈 تطور الدخول حسب السنة</h3></div>
-                <PrintChart height={300}>
+                <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={entryTimeline} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorEntry" x1="0" y1="0" x2="0" y2="1">
@@ -546,14 +572,14 @@ function AnalyticsDashboard() {
                     <Area type="monotone" dataKey="value" name="الدخول" stroke="#0ea5e9" strokeWidth={3}
                       fill="url(#colorEntry)" dot={{ fill: '#0ea5e9', r: 4 }} activeDot={{ r: 6 }} />
                   </AreaChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
             <div className="charts-row">
               <div className="chart-card chart-full">
                 <div className="chart-header"><h3>📊 الدخول مقابل الخروج حسب السنة</h3></div>
-                <PrintChart height={350}>
+                <ResponsiveContainer width="100%" height={350}>
                   <BarChart data={entryVsExit} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="name" stroke="#6b7280" fontSize={13} />
@@ -563,7 +589,7 @@ function AnalyticsDashboard() {
                     <Bar dataKey="entries" name="الدخول" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="exits" name="الخروج" fill="#f97316" radius={[4, 4, 0, 0]} />
                   </BarChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
@@ -571,7 +597,7 @@ function AnalyticsDashboard() {
               <div className="charts-row">
                 <div className="chart-card chart-full">
                   <div className="chart-header"><h3>📅 الدخول الشهري (آخر سنتين)</h3></div>
-                  <PrintChart height={300}>
+                  <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={monthlyEntry} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorMonthly" x1="0" y1="0" x2="0" y2="1">
@@ -586,7 +612,7 @@ function AnalyticsDashboard() {
                       <Area type="monotone" dataKey="value" name="الدخول" stroke="#22c55e" strokeWidth={2}
                         fill="url(#colorMonthly)" dot={{ fill: '#22c55e', r: 3 }} />
                     </AreaChart>
-                  </PrintChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             )}
@@ -594,7 +620,7 @@ function AnalyticsDashboard() {
             <div className="charts-row">
               <div className="chart-card">
                 <div className="chart-header"><h3>🚪 تطور الخروج حسب السنة</h3></div>
-                <PrintChart height={300}>
+                <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={departTimeline} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorDepart" x1="0" y1="0" x2="0" y2="1">
@@ -609,12 +635,12 @@ function AnalyticsDashboard() {
                     <Area type="monotone" dataKey="value" name="الخروج" stroke="#f97316" strokeWidth={2}
                       fill="url(#colorDepart)" dot={{ fill: '#f97316', r: 4 }} />
                   </AreaChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
 
               <div className="chart-card">
                 <div className="chart-header"><h3>⏱️ مدة الإقامة</h3></div>
-                <PrintChart height={300}>
+                <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={stayDuration} layout="vertical" margin={{ top: 10, right: 30, left: 80, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
@@ -622,11 +648,11 @@ function AnalyticsDashboard() {
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="value" name="العدد" fill="#8b5cf6" radius={[0, 6, 6, 0]} />
                   </BarChart>
-                </PrintChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </div>
-        )}
+        </div>)}
       </div>
 
       {/* Footer summary */}
@@ -649,7 +675,6 @@ function AnalyticsDashboard() {
         </div>
       </div>
     </div>
-    </PrintContext.Provider>
   );
 }
 
