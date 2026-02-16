@@ -66,7 +66,16 @@ export const beneficiariesAPI = {
   update: (id, data) => api.put(`/beneficiaries/${id}`, data),
   delete: (id) => api.delete(`/beneficiaries/${id}`),
   addSuivi: (id, data) => api.post(`/beneficiaries/${id}/suivi`, data),
-  getStats: () => api.get('/beneficiaries/stats/dashboard')
+  getStats: () => api.get('/beneficiaries/stats/dashboard'),
+  // Import
+  importExcel: (formData) => api.post('/beneficiaries/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  downloadTemplate: () => api.get('/beneficiaries/export/template', { responseType: 'blob' }),
+  // Distributions
+  getDistributions: (id) => api.get(`/beneficiaries/${id}/distributions`),
+  addDistribution: (id, data) => api.post(`/beneficiaries/${id}/distributions`, data),
+  getAllDistributions: (params) => api.get('/beneficiaries/distributions/all', { params })
 }
 
 // Announcements API
