@@ -589,9 +589,35 @@
   page-break-before: auto;
 }
 
-/* ── Print All mode ── */
-.tab-content.print-all {
-  display: block;
+/* ── Tab Panel visibility ── */
+/* Hidden tabs: rendered in DOM but not visible to user */
+.tab-panel.tab-hidden {
+  position: absolute;
+  left: -9999px;
+  width: 100%;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.tab-panel.tab-active {
+  position: relative;
+  left: auto;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.tab-content {
+  position: relative;
+}
+
+/* Print section titles only visible in print */
+.print-section-title {
+  display: none;
+}
+
+/* Hide elements during print */
+.no-print {
+  display: flex;
 }
 
 /* ═══════════════════════════════════════════
@@ -606,8 +632,8 @@
     margin: 12mm 10mm;
   }
 
-  /* Hide everything outside analytics */
-  body > *:not(#root),
+  /* Hide non-printable elements */
+  .no-print,
   .dashboard-sidebar,
   .mobile-menu-toggle,
   .sidebar-overlay,
@@ -618,6 +644,32 @@
   .btn-retry,
   nav, header:not(.analytics-header) {
     display: none !important;
+  }
+
+  /* Show ALL tab panels in print */
+  .tab-panel.tab-hidden {
+    position: relative !important;
+    left: auto !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  /* Show section titles in print */
+  .print-section-title {
+    display: block !important;
+    font-size: 1.1rem;
+    color: #1e293b;
+    font-weight: 800;
+    margin: 1.5rem 0 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid #e2e8f0;
+    page-break-before: always;
+    page-break-after: avoid;
+  }
+
+  .tab-panel:first-child .print-section-title {
+    page-break-before: avoid;
+    margin-top: 0.5rem;
   }
 
   /* Full width */
