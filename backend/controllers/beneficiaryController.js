@@ -1,6 +1,9 @@
 const Beneficiary = require('../models/Beneficiary');
 const Distribution = require('../models/Distribution');
 const FoodStock = require('../models/FoodStock');
+const AuditLog = require('../models/AuditLog');
+const Announcement = require('../models/Announcement');
+const User = require('../models/User');
 const { notifyAdmins, notificationTemplates } = require('../utils/notificationHelper');
 const XLSX = require('xlsx');
 
@@ -224,12 +227,73 @@ exports.getStats = async (req, res) => {
 
     // Distribution stats this month
     const distributionsCeMois = await Distribution.countDocuments({ date: { $gte: startOfMonth } });
-    
+
+    // ── Health breakdown (for mini chart) ──
+    const healthStats = await Beneficiary.aggregate([
+      { $match: { etatSante: { $ne: null, $ne: '' } } },
+      { $group: { _id: '$etatSante', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 6 }
+    ]);
+
+    // ── Lieu intervention breakdown ──
+    const lieuStats = await Beneficiary.aggregate([
+      { $match: { lieuIntervention: { $ne: null, $ne: '' } } },
+      { $group: { _id: '$lieuIntervention', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 }
+    ]);
+
+    // ── Monthly entry trend (last 12 months) ──
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+    const monthlyTrend = await Beneficiary.aggregate([
+      { $match: { dateEntree: { $gte: twelveMonthsAgo } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m', date: '$dateEntree' } }, count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // ── Recent activities from AuditLog ──
+    let recentActivities = [];
+    try {
+      recentActivities = await AuditLog.find({})
+        .sort({ timestamp: -1 })
+        .limit(8)
+        .populate('user', 'nom prenom')
+        .lean();
+    } catch (e) { /* AuditLog may be empty */ }
+
+    // ── Recent announcements ──
+    let announcements = [];
+    try {
+      announcements = await Announcement.find({ isActive: true })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('createdBy', 'nom prenom')
+        .lean();
+    } catch (e) { /* empty */ }
+
+    // ── Staff count ──
+    let staffCount = 0;
+    try {
+      staffCount = await User.countDocuments({ isActive: true });
+    } catch (e) { /* empty */ }
+
+    // ── Recent 5 beneficiaries ──
+    const recentBeneficiaries = await Beneficiary.find({})
+      .sort({ dateEntree: -1 })
+      .limit(5)
+      .select('nom prenom numeroOrdre dateEntree statut etatSante')
+      .lean();
+
+    // Sortis ce mois
+    const sortisCeMois = await Beneficiary.countDocuments({ dateSortie: { $gte: startOfMonth } });
+
     res.status(200).json({
       success: true,
       data: {
-        total, heberge, sorti, enSuivi, transfere, nouveauxCeMois,
-        hommes, femmes,
+        total, heberge, sorti, enSuivi, transfere, nouveauxCeMois, sortisCeMois,
+        hommes, femmes, staffCount,
         besoins: {
           alimentaire: besoinsAlimentaire,
           hygiene: besoinsHygiene,
@@ -239,7 +303,13 @@ exports.getStats = async (req, res) => {
         },
         situationStats,
         maBaadStats,
-        distributionsCeMois
+        healthStats,
+        lieuStats,
+        monthlyTrend,
+        distributionsCeMois,
+        recentActivities,
+        announcements,
+        recentBeneficiaries
       }
     });
   } catch (error) {
