@@ -66,7 +66,7 @@ const FoodStockManagement = () => {
   // ═══════════════════════════════════════
   const exportToExcel = async () => {
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'Association Adel Elouerif';
+    wb.creator = 'ADDEL ALWAREF';
     wb.created = new Date();
 
     const ws = wb.addWorksheet('État du Stock Alimentaire', {
@@ -89,7 +89,7 @@ const FoodStockManagement = () => {
     // Row 1: Association name
     ws.mergeCells('A1:G1');
     const assocCell = ws.getCell('A1');
-    assocCell.value = 'Association Adel Elouerif';
+    assocCell.value = 'ADDEL ALWAREF';
     assocCell.font = { bold: true, size: 18, color: { argb: 'FF1B5E20' } };
     assocCell.alignment = { horizontal: 'center', vertical: 'middle' };
     ws.getRow(1).height = 35;
@@ -341,7 +341,7 @@ const FoodStockManagement = () => {
       <body>
         <div class="header">
           <img src="/images/logo.png" alt="Logo" style="width:80px;height:80px;margin-bottom:8px;" />
-          <h1>Association Adel Elouerif</h1>
+          <h1>ADDEL ALWAREF</h1>
           <h2>État du Stock Alimentaire</h2>
           <p>Date d'impression : ${dateStr}</p>
           <div class="signatures">
@@ -377,7 +377,7 @@ const FoodStockManagement = () => {
         </div>
 
         <div class="footer">
-          Association Adel Elouerif — Document généré le ${dateStr}
+          ADDEL ALWAREF — Document généré le ${dateStr}
         </div>
       </body>
       </html>
