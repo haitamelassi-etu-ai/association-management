@@ -49,13 +49,14 @@ function UnifiedLogin() {
           id: Date.now().toString(),
           type: 'login',
           user: `${user.nom} ${user.prenom}`,
-          description: isAdmin ? 'Connexion au panneau d\'administration' : 'Connexion au portail professionnel',
+          description: 'Connexion au portail',
           timestamp: new Date().toISOString()
         })
         localStorage.setItem('activityLog', JSON.stringify(activityLog))
         
         setLoading(false)
-        navigate(isAdmin ? '/admin' : '/professional/dashboard')
+        // All users go to professional dashboard — admins can access admin panel from sidebar
+        navigate('/professional/dashboard')
       }
     } catch (err) {
       console.error('❌ Login error:', err);

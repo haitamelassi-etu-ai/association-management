@@ -219,6 +219,11 @@ function AdminPanel({ onLogout }) {
 
       {/* Quick Actions Menu */}
       <div className="admin-menu-grid">
+        <button onClick={() => navigate('/professional/dashboard')} className="menu-card indigo">
+          <div className="menu-icon">📊</div>
+          <h3>Portail Professionnel</h3>
+          <p>Bénéficiaires, stock, pointage, rapports</p>
+        </button>
         <button onClick={() => navigate('/admin/users')} className="menu-card blue">
           <div className="menu-icon">👥</div>
           <h3>Gestion des Utilisateurs</h3>

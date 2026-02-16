@@ -6,6 +6,8 @@ export const ProfessionalSidebar = ({ user, onLogout }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
+  const isAdmin = user?.role === 'admin';
+
   const navItems = [
     { path: '/professional/dashboard', icon: '📊', label: 'Dashboard' },
     { path: '/professional/analytics', icon: '📈', label: 'Analytique' },
@@ -19,7 +21,9 @@ export const ProfessionalSidebar = ({ user, onLogout }) => {
     { path: '/professional/backup', icon: '💾', label: 'Sauvegarde' },
     { path: '/professional/meals', icon: '🍽️', label: 'Repas' },
     { path: '/professional/pharmacy', icon: '🏥', label: 'Pharmacie' },
-    { path: '/professional/medications', icon: '�', label: 'Prescriptions' }
+    { path: '/professional/medications', icon: '💊', label: 'Prescriptions' },
+    // Admin-only link
+    ...(isAdmin ? [{ path: '/admin', icon: '🎛️', label: 'Panneau Admin' }] : [])
   ];
 
   return (
