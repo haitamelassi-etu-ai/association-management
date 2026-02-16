@@ -1,9 +1,12 @@
 .food-stock-container {
   padding: 20px;
   max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .food-stock-header {

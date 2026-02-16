@@ -1,186 +1,155 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { usersAPI } from '../services/api'
 import './UserManagement.css'
 
 function UserManagement() {
   const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState('all')
+  const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Check admin authentication
-    const isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn')
-    if (!isAdminLoggedIn) {
+    const token = localStorage.getItem('professionalToken')
+    if (!token) {
       navigate('/login')
       return
     }
-
-    // Load users from localStorage
     loadUsers()
   }, [navigate])
 
-  const loadUsers = () => {
-    const savedUsers = localStorage.getItem('systemUsers')
-    if (savedUsers) {
-      setUsers(JSON.parse(savedUsers))
-    } else {
-      // Default users
-      const defaultUsers = [
-        {
-          id: '1',
-          nom: 'Admin',
-          prenom: 'Principal',
-          email: 'admin@adelelouerif.org',
-          role: 'admin',
-          telephone: '0612345678',
-          poste: 'Directeur',
-          dateCreation: '2024-01-15',
-          statut: 'actif',
-          permissions: ['all']
-        },
-        {
-          id: '2',
-          nom: 'Benali',
-          prenom: 'Fatima',
-          email: 'f.benali@adelelouerif.org',
-          role: 'staff',
-          telephone: '0623456789',
-          poste: 'Assistante Sociale',
-          dateCreation: '2024-03-20',
-          statut: 'actif',
-          permissions: ['beneficiaries', 'announcements']
-        },
-        {
-          id: '3',
-          nom: 'Alami',
-          prenom: 'Hassan',
-          email: 'h.alami@adelelouerif.org',
-          role: 'staff',
-          telephone: '0634567890',
-          poste: 'Coordinateur',
-          dateCreation: '2024-05-10',
-          statut: 'actif',
-          permissions: ['attendance', 'reports']
-        }
-      ]
-      setUsers(defaultUsers)
-      localStorage.setItem('systemUsers', JSON.stringify(defaultUsers))
+  const loadUsers = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await usersAPI.getAll()
+      setUsers(res.data.data || [])
+    } catch (err) {
+      console.error('Failed to load users:', err)
+      if (err.response?.status === 401) {
+        navigate('/login')
+      } else if (err.response?.status === 403) {
+        setError('Accès refusé. Seuls les administrateurs peuvent gérer les utilisateurs.')
+      } else {
+        setError('Impossible de charger les utilisateurs. Vérifiez la connexion.')
+      }
+    } finally {
+      setLoading(false)
     }
   }
 
-  const saveUsers = (updatedUsers) => {
-    setUsers(updatedUsers)
-    localStorage.setItem('systemUsers', JSON.stringify(updatedUsers))
-  }
-
-  const handleAddUser = (e) => {
+  const handleAddUser = async (e) => {
     e.preventDefault()
+    setSaving(true)
+    setError('')
     const formData = new FormData(e.target)
     
     const newUser = {
-      id: Date.now().toString(),
       nom: formData.get('nom'),
       prenom: formData.get('prenom'),
       email: formData.get('email'),
+      password: formData.get('password'),
       role: formData.get('role'),
       telephone: formData.get('telephone'),
-      poste: formData.get('poste'),
-      dateCreation: new Date().toISOString().split('T')[0],
-      statut: 'actif',
-      permissions: Array.from(formData.getAll('permissions'))
+      poste: formData.get('poste')
     }
 
-    const updatedUsers = [...users, newUser]
-    saveUsers(updatedUsers)
-    setShowAddModal(false)
-    
-    // Log activity
-    logActivity('add_user', `Ajout utilisateur: ${newUser.prenom} ${newUser.nom}`)
+    try {
+      await usersAPI.create(newUser)
+      await loadUsers()
+      setShowAddModal(false)
+    } catch (err) {
+      console.error('Failed to add user:', err)
+      setError(err.response?.data?.message || 'Erreur lors de l\'ajout de l\'utilisateur')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleEditUser = (e) => {
+  const handleEditUser = async (e) => {
     e.preventDefault()
+    setSaving(true)
+    setError('')
     const formData = new FormData(e.target)
     
-    const updatedUser = {
-      ...selectedUser,
+    const updatedData = {
       nom: formData.get('nom'),
       prenom: formData.get('prenom'),
       email: formData.get('email'),
       role: formData.get('role'),
       telephone: formData.get('telephone'),
-      poste: formData.get('poste'),
-      permissions: Array.from(formData.getAll('permissions'))
+      poste: formData.get('poste')
     }
 
-    const updatedUsers = users.map(u => u.id === selectedUser.id ? updatedUser : u)
-    saveUsers(updatedUsers)
-    setShowEditModal(false)
-    setSelectedUser(null)
+    // Only include password if provided
+    const password = formData.get('password')
+    if (password && password.trim() !== '') {
+      updatedData.password = password
+    }
+
+    try {
+      await usersAPI.update(selectedUser._id, updatedData)
+      await loadUsers()
+      setShowEditModal(false)
+      setSelectedUser(null)
+    } catch (err) {
+      console.error('Failed to update user:', err)
+      setError(err.response?.data?.message || 'Erreur lors de la modification')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteUser = async (userId) => {
+    const user = users.find(u => u._id === userId)
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer ${user.prenom} ${user.nom} ?`)) return
     
-    // Log activity
-    logActivity('edit_user', `Modification utilisateur: ${updatedUser.prenom} ${updatedUser.nom}`)
-  }
-
-  const handleDeleteUser = (userId) => {
-    const user = users.find(u => u.id === userId)
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${user.prenom} ${user.nom} ?`)) {
-      const updatedUsers = users.filter(u => u.id !== userId)
-      saveUsers(updatedUsers)
-      
-      // Log activity
-      logActivity('delete_user', `Suppression utilisateur: ${user.prenom} ${user.nom}`)
+    try {
+      await usersAPI.delete(userId)
+      await loadUsers()
+    } catch (err) {
+      console.error('Failed to delete user:', err)
+      setError(err.response?.data?.message || 'Erreur lors de la suppression')
     }
   }
 
-  const handleToggleStatus = (userId) => {
-    const updatedUsers = users.map(u => {
-      if (u.id === userId) {
-        const newStatus = u.statut === 'actif' ? 'inactif' : 'actif'
-        logActivity('toggle_status', `Changement statut: ${u.prenom} ${u.nom} → ${newStatus}`)
-        return { ...u, statut: newStatus }
-      }
-      return u
-    })
-    saveUsers(updatedUsers)
-  }
-
-  const logActivity = (type, description) => {
-    const activities = JSON.parse(localStorage.getItem('activityLog') || '[]')
-    const newActivity = {
-      id: Date.now().toString(),
-      type,
-      description,
-      timestamp: new Date().toISOString(),
-      user: 'Admin Principal'
+  const handleToggleStatus = async (userId) => {
+    const user = users.find(u => u._id === userId)
+    try {
+      await usersAPI.update(userId, { isActive: !user.isActive })
+      await loadUsers()
+    } catch (err) {
+      console.error('Failed to toggle status:', err)
+      setError(err.response?.data?.message || 'Erreur lors du changement de statut')
     }
-    activities.unshift(newActivity)
-    localStorage.setItem('activityLog', JSON.stringify(activities.slice(0, 100))) // Keep last 100
   }
 
   const getRoleBadge = (role) => {
     const badges = {
       admin: { label: 'Admin', class: 'role-admin' },
+      responsable: { label: 'Responsable', class: 'role-responsable' },
       staff: { label: 'Staff', class: 'role-staff' },
-      viewer: { label: 'Viewer', class: 'role-viewer' }
+      volunteer: { label: 'Bénévole', class: 'role-volunteer' }
     }
     return badges[role] || { label: role, class: '' }
   }
 
-  const getStatutBadge = (statut) => {
-    return statut === 'actif' 
+  const getStatutBadge = (isActive) => {
+    return isActive
       ? { label: 'Actif', class: 'status-active' }
       : { label: 'Inactif', class: 'status-inactive' }
   }
 
   const filteredUsers = users.filter(user => {
-    const matchSearch = user.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       user.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchSearch = user.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       user.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       user.email?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchRole = filterRole === 'all' || user.role === filterRole
     return matchSearch && matchRole
   })
@@ -198,6 +167,13 @@ function UserManagement() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="error-message" style={{ margin: '10px 0', padding: '12px', background: '#fee', color: '#c00', borderRadius: '8px' }}>
+          ⚠️ {error}
+          <button onClick={() => setError('')} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="filters-section">
@@ -225,96 +201,117 @@ function UserManagement() {
             Admins ({users.filter(u => u.role === 'admin').length})
           </button>
           <button 
+            className={filterRole === 'responsable' ? 'filter-btn active' : 'filter-btn'}
+            onClick={() => setFilterRole('responsable')}
+          >
+            Responsables ({users.filter(u => u.role === 'responsable').length})
+          </button>
+          <button 
             className={filterRole === 'staff' ? 'filter-btn active' : 'filter-btn'}
             onClick={() => setFilterRole('staff')}
           >
             Staff ({users.filter(u => u.role === 'staff').length})
+          </button>
+          <button 
+            className={filterRole === 'volunteer' ? 'filter-btn active' : 'filter-btn'}
+            onClick={() => setFilterRole('volunteer')}
+          >
+            Bénévoles ({users.filter(u => u.role === 'volunteer').length})
           </button>
         </div>
       </div>
 
       {/* Users Table */}
       <div className="content-card">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Utilisateur</th>
-              <th>Email</th>
-              <th>Rôle</th>
-              <th>Poste</th>
-              <th>Date création</th>
-              <th>Statut</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map(user => (
-              <tr key={user.id}>
-                <td>
-                  <div className="user-cell">
-                    <div className="user-avatar-small">
-                      {user.prenom[0]}{user.nom[0]}
-                    </div>
-                    <div>
-                      <div className="user-name-primary">{user.prenom} {user.nom}</div>
-                      <div className="user-phone">{user.telephone}</div>
-                    </div>
-                  </div>
-                </td>
-                <td>{user.email}</td>
-                <td>
-                  <span className={`badge ${getRoleBadge(user.role).class}`}>
-                    {getRoleBadge(user.role).label}
-                  </span>
-                </td>
-                <td>{user.poste}</td>
-                <td>{new Date(user.dateCreation).toLocaleDateString('fr-FR')}</td>
-                <td>
-                  <span className={`badge ${getStatutBadge(user.statut).class}`}>
-                    {getStatutBadge(user.statut).label}
-                  </span>
-                </td>
-                <td>
-                  <div className="action-buttons">
-                    <button 
-                      className="btn-icon"
-                      onClick={() => {
-                        setSelectedUser(user)
-                        setShowEditModal(true)
-                      }}
-                      title="Modifier"
-                    >
-                      ✏️
-                    </button>
-                    <button 
-                      className="btn-icon"
-                      onClick={() => handleToggleStatus(user.id)}
-                      title={user.statut === 'actif' ? 'Désactiver' : 'Activer'}
-                    >
-                      {user.statut === 'actif' ? '🔴' : '🟢'}
-                    </button>
-                    {user.role !== 'admin' && (
-                      <button 
-                        className="btn-icon danger"
-                        onClick={() => handleDeleteUser(user.id)}
-                        title="Supprimer"
-                      >
-                        🗑️
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {filteredUsers.length === 0 && (
+        {loading ? (
           <div className="empty-state">
-            <div className="empty-icon">🔍</div>
-            <h3>Aucun utilisateur trouvé</h3>
-            <p>Essayez de modifier vos critères de recherche</p>
+            <div className="empty-icon">⏳</div>
+            <h3>Chargement...</h3>
           </div>
+        ) : (
+          <>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Utilisateur</th>
+                  <th>Email</th>
+                  <th>Rôle</th>
+                  <th>Poste</th>
+                  <th>Date création</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map(user => (
+                  <tr key={user._id}>
+                    <td>
+                      <div className="user-cell">
+                        <div className="user-avatar-small">
+                          {user.prenom?.[0]}{user.nom?.[0]}
+                        </div>
+                        <div>
+                          <div className="user-name-primary">{user.prenom} {user.nom}</div>
+                          <div className="user-phone">{user.telephone}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{user.email}</td>
+                    <td>
+                      <span className={`badge ${getRoleBadge(user.role).class}`}>
+                        {getRoleBadge(user.role).label}
+                      </span>
+                    </td>
+                    <td>{user.poste}</td>
+                    <td>{user.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : '-'}</td>
+                    <td>
+                      <span className={`badge ${getStatutBadge(user.isActive).class}`}>
+                        {getStatutBadge(user.isActive).label}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        <button 
+                          className="btn-icon"
+                          onClick={() => {
+                            setSelectedUser(user)
+                            setShowEditModal(true)
+                          }}
+                          title="Modifier"
+                        >
+                          ✏️
+                        </button>
+                        <button 
+                          className="btn-icon"
+                          onClick={() => handleToggleStatus(user._id)}
+                          title={user.isActive ? 'Désactiver' : 'Activer'}
+                        >
+                          {user.isActive ? '🔴' : '🟢'}
+                        </button>
+                        {user.role !== 'admin' && (
+                          <button 
+                            className="btn-icon danger"
+                            onClick={() => handleDeleteUser(user._id)}
+                            title="Supprimer"
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {filteredUsers.length === 0 && (
+              <div className="empty-state">
+                <div className="empty-icon">🔍</div>
+                <h3>Aucun utilisateur trouvé</h3>
+                <p>Essayez de modifier vos critères de recherche</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -341,42 +338,25 @@ function UserManagement() {
                   <input type="email" name="email" required />
                 </div>
                 <div className="form-group">
-                  <label>Téléphone *</label>
-                  <input type="tel" name="telephone" required />
+                  <label>Mot de passe *</label>
+                  <input type="password" name="password" required minLength={6} />
+                </div>
+                <div className="form-group">
+                  <label>Téléphone</label>
+                  <input type="tel" name="telephone" />
                 </div>
                 <div className="form-group">
                   <label>Rôle *</label>
                   <select name="role" required>
                     <option value="staff">Staff</option>
+                    <option value="responsable">Responsable</option>
                     <option value="admin">Admin</option>
-                    <option value="viewer">Viewer</option>
+                    <option value="volunteer">Bénévole</option>
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Poste *</label>
-                  <input type="text" name="poste" required />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Permissions</label>
-                <div className="checkbox-group">
-                  <label>
-                    <input type="checkbox" name="permissions" value="beneficiaries" />
-                    Gestion des bénéficiaires
-                  </label>
-                  <label>
-                    <input type="checkbox" name="permissions" value="attendance" />
-                    Gestion du pointage
-                  </label>
-                  <label>
-                    <input type="checkbox" name="permissions" value="announcements" />
-                    Gestion des annonces
-                  </label>
-                  <label>
-                    <input type="checkbox" name="permissions" value="reports" />
-                    Accès aux rapports
-                  </label>
+                  <label>Poste</label>
+                  <input type="text" name="poste" />
                 </div>
               </div>
 
@@ -384,8 +364,8 @@ function UserManagement() {
                 <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary">
                   Annuler
                 </button>
-                <button type="submit" className="btn-primary">
-                  Ajouter
+                <button type="submit" className="btn-primary" disabled={saving}>
+                  {saving ? '⏳ Ajout...' : 'Ajouter'}
                 </button>
               </div>
             </form>
@@ -416,62 +396,25 @@ function UserManagement() {
                   <input type="email" name="email" defaultValue={selectedUser.email} required />
                 </div>
                 <div className="form-group">
-                  <label>Téléphone *</label>
-                  <input type="tel" name="telephone" defaultValue={selectedUser.telephone} required />
+                  <label>Nouveau mot de passe</label>
+                  <input type="password" name="password" placeholder="Laisser vide pour ne pas changer" minLength={6} />
+                </div>
+                <div className="form-group">
+                  <label>Téléphone</label>
+                  <input type="tel" name="telephone" defaultValue={selectedUser.telephone} />
                 </div>
                 <div className="form-group">
                   <label>Rôle *</label>
                   <select name="role" defaultValue={selectedUser.role} required>
                     <option value="staff">Staff</option>
+                    <option value="responsable">Responsable</option>
                     <option value="admin">Admin</option>
-                    <option value="viewer">Viewer</option>
+                    <option value="volunteer">Bénévole</option>
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Poste *</label>
-                  <input type="text" name="poste" defaultValue={selectedUser.poste} required />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Permissions</label>
-                <div className="checkbox-group">
-                  <label>
-                    <input 
-                      type="checkbox" 
-                      name="permissions" 
-                      value="beneficiaries"
-                      defaultChecked={selectedUser.permissions.includes('beneficiaries')}
-                    />
-                    Gestion des bénéficiaires
-                  </label>
-                  <label>
-                    <input 
-                      type="checkbox" 
-                      name="permissions" 
-                      value="attendance"
-                      defaultChecked={selectedUser.permissions.includes('attendance')}
-                    />
-                    Gestion du pointage
-                  </label>
-                  <label>
-                    <input 
-                      type="checkbox" 
-                      name="permissions" 
-                      value="announcements"
-                      defaultChecked={selectedUser.permissions.includes('announcements')}
-                    />
-                    Gestion des annonces
-                  </label>
-                  <label>
-                    <input 
-                      type="checkbox" 
-                      name="permissions" 
-                      value="reports"
-                      defaultChecked={selectedUser.permissions.includes('reports')}
-                    />
-                    Accès aux rapports
-                  </label>
+                  <label>Poste</label>
+                  <input type="text" name="poste" defaultValue={selectedUser.poste} />
                 </div>
               </div>
 
@@ -479,8 +422,8 @@ function UserManagement() {
                 <button type="button" onClick={() => setShowEditModal(false)} className="btn-secondary">
                   Annuler
                 </button>
-                <button type="submit" className="btn-primary">
-                  Enregistrer
+                <button type="submit" className="btn-primary" disabled={saving}>
+                  {saving ? '⏳ Enregistrement...' : 'Enregistrer'}
                 </button>
               </div>
             </form>

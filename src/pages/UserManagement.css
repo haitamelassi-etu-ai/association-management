@@ -36,13 +36,18 @@
   color: white;
 }
 
+.role-responsable {
+  background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+  color: #2d3748;
+}
+
 .role-staff {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
 
-.role-viewer {
-  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+.role-volunteer {
+  background: linear-gradient(135deg, #a8edea 0%, #43e97b 100%);
   color: #2d3748;
 }
 
