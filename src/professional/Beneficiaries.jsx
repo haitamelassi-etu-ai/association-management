@@ -270,14 +270,79 @@ function Beneficiaries() {
   // ─── DOWNLOAD TEMPLATE ───
   const handleDownloadTemplate = async () => {
     try {
-      const response = await beneficiariesAPI.downloadTemplate()
-      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'modele_import_beneficiaires.xlsx'
-      a.click()
-      window.URL.revokeObjectURL(url)
+      const ExcelJS = (await import('exceljs')).default
+      const { saveAs } = await import('file-saver')
+
+      const wb = new ExcelJS.Workbook()
+      wb.creator = 'ADDEL ALWAREF'
+      const ws = wb.addWorksheet('المستفيدين', { views: [{ rightToLeft: true }] })
+
+      // Header row - matching screenshot style
+      const headers = [
+        'ر.ت', 'الاسم الكامل', 'تاريخ الازدياد', 'مكان الازدياد', 'العنوان',
+        'الحالة الصحية', 'الجهة الموجهة', 'مكان التدخل', 'الحالة الاجتماعية',
+        'ما بعد الايواء', 'تاريخ الايواء', 'تاريخ المغادرة', 'رقم البطاقة الوطنية'
+      ]
+      const headerRow = ws.addRow(headers)
+      headerRow.height = 28
+      headerRow.eachCell((cell, colNum) => {
+        const isTeal = colNum % 2 === 0
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isTeal ? 'FF008B8B' : 'FF2F4F4F' } }
+        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11, name: 'Arial' }
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        }
+      })
+
+      // Sample data rows matching real data
+      const sampleData = [
+        [1, 'عزيز مقبول', '13/01/1969', 'البيضاء', 'السعادة 303 ر 20 ر 68 ح/م', 'جيدة', 'السلطات المحلية', 'الى المحمدي', 'متشرد', 'نزيل بالمركز', '2020.03.31', '', 'BJ102114'],
+        [2, 'عبد القادر ارجادي', '27/07/1960', 'البيضاء', 'كريان الرحلة زنقة 29 رقم 15 عين السبع', 'جيدة', 'السلطات المحلية', 'الى المحمدي', 'متشرد', 'مغادرة', '2020.03.31', '2022.06.01', 'JB82900'],
+        [3, 'سام الادريسي', '1976', 'سطات', 'شارع الطاهر العلوي رقم', 'جيدة', 'السلطات المحلية', 'الصخور السوداء', 'متشرد + متسول', 'ادماج اسري', '2020.03.31', '2022.05.15', ''],
+        [4, 'رشيد الحنجري', '10/11/1975', 'الجديدة', 'درب الحرية الزنقة 17 الرقم 29 عين السبع', 'إعاقة جسدية', 'السلطات المحلية', 'عين السبع', 'متشرد + متسول', 'فرار', '2020.03.31', '2020.06.027', '']
+      ]
+
+      sampleData.forEach((rowData, idx) => {
+        const row = ws.addRow(rowData)
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+            bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+            left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+            right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
+          }
+          cell.alignment = { horizontal: 'center', vertical: 'middle' }
+          cell.font = { size: 10, name: 'Arial' }
+          if (idx % 2 === 1) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F8FF' } }
+          }
+        })
+      })
+
+      // Column widths matching screenshot
+      ws.columns = [
+        { width: 6 },   // ر.ت
+        { width: 22 },  // الاسم الكامل
+        { width: 16 },  // تاريخ الازدياد
+        { width: 14 },  // مكان الازدياد
+        { width: 40 },  // العنوان
+        { width: 16 },  // الحالة الصحية
+        { width: 20 },  // الجهة الموجهة
+        { width: 20 },  // مكان التدخل
+        { width: 20 },  // الحالة الاجتماعية
+        { width: 18 },  // ما بعد الايواء
+        { width: 14 },  // تاريخ الايواء
+        { width: 14 },  // تاريخ المغادرة
+        { width: 22 }   // رقم البطاقة الوطنية
+      ]
+
+      const buffer = await wb.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      saveAs(blob, 'modele_import_beneficiaires.xlsx')
     } catch (error) {
       alert('Erreur téléchargement: ' + error.message)
     }
@@ -527,6 +592,7 @@ function Beneficiaries() {
             <p>Gestion sociale complète des bénéficiaires de l'association</p>
           </div>
           <div className="header-actions">
+            <button onClick={handleDownloadTemplate} className="btn-outline" title="Télécharger modèle vide">📄 Modèle</button>
             <button onClick={handlePrint} className="btn-outline" title="Imprimer">🖨️ Imprimer</button>
             <button onClick={handleExportExcel} className="btn-outline" title="Exporter Excel">📊 Excel</button>
             <button onClick={() => setShowImportModal(true)} className="btn-outline" title="Importer Excel">📥 Importer</button>
