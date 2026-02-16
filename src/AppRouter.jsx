@@ -23,6 +23,13 @@ import MedicationManagement from './components/MedicationManagement'
 import PharmacyStock from './components/PharmacyStock'
 import ExitTracking from './components/ExitTracking'
 import FoodStockManagement from './components/FoodStockManagement'
+import ScheduleCalendar from './components/ScheduleCalendar'
+import TicketSystem from './components/TicketSystem'
+import DocumentManager from './components/DocumentManager'
+import ApprovalWorkflow from './components/ApprovalWorkflow'
+import AuditLogViewer from './components/AuditLogViewer'
+import TwoFactorSetup from './components/TwoFactorSetup'
+import UserSettings from './components/UserSettings'
 
 function AppRouter() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false)
@@ -121,6 +128,13 @@ function AppRouter() {
         <Route path="/professional/exit-tracking" element={<ExitTracking />} />
         <Route path="/professional/food-stock" element={<FoodStockManagement />} />
         <Route path="/professional/advanced-reports" element={<AdvancedReports />} />
+        <Route path="/professional/schedule" element={<ScheduleCalendar />} />
+        <Route path="/professional/tickets" element={<TicketSystem />} />
+        <Route path="/professional/documents" element={<DocumentManager />} />
+        <Route path="/professional/approvals" element={<ApprovalWorkflow />} />
+        <Route path="/professional/audit-log" element={<AuditLogViewer />} />
+        <Route path="/professional/two-factor" element={<TwoFactorSetup />} />
+        <Route path="/professional/settings" element={<UserSettings />} />
       </Routes>
     </Router>
   )

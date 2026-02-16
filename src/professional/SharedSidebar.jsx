@@ -22,6 +22,13 @@ export const ProfessionalSidebar = ({ user, onLogout }) => {
     { path: '/professional/meals', icon: '🍽️', label: 'Repas' },
     { path: '/professional/pharmacy', icon: '🏥', label: 'Pharmacie' },
     { path: '/professional/medications', icon: '💊', label: 'Prescriptions' },
+    { path: '/professional/schedule', icon: '📅', label: 'Planning' },
+    { path: '/professional/tickets', icon: '🎫', label: 'Tickets' },
+    { path: '/professional/documents', icon: '📄', label: 'Documents' },
+    { path: '/professional/approvals', icon: '✅', label: 'Approbations' },
+    { path: '/professional/audit-log', icon: '📜', label: 'Journal d\'audit' },
+    { path: '/professional/settings', icon: '⚙️', label: 'Paramètres' },
+    { path: '/professional/two-factor', icon: '🔐', label: 'Sécurité 2FA' },
     // Admin-only link
     ...(isAdmin ? [{ path: '/admin', icon: '🎛️', label: 'Panneau Admin' }] : [])
   ];
