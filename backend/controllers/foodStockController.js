@@ -6,7 +6,7 @@ exports.getAllStock = async (req, res) => {
   try {
     const { statut, categorie, search } = req.query;
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = parseInt(req.query.limit) || 500;
     const skip = (page - 1) * limit;
 
     // Construire le filtre
