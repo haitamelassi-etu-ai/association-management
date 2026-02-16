@@ -589,32 +589,13 @@
   page-break-before: auto;
 }
 
-/* ── Tab Panel visibility ── */
-/*
-  Hidden tabs overlap the active tab with same dimensions
-  so recharts ResponsiveContainer measures correct width/height
-  and SVGs render properly. Only opacity hides them.
-*/
+/* ── Tab Panel ── */
 .tab-content {
   position: relative;
-  overflow: hidden;
 }
 
-.tab-panel.tab-hidden {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  opacity: 0;
-  pointer-events: none;
-  z-index: -1;
-}
-
-.tab-panel.tab-active {
-  position: relative;
-  opacity: 1;
-  pointer-events: auto;
-  z-index: 1;
+.tab-panel {
+  animation: fadeIn 0.3s ease;
 }
 
 /* Print section titles only visible in print */
@@ -622,9 +603,10 @@
   display: none;
 }
 
-/* Hide elements during print */
-.no-print {
-  display: flex;
+/* Print mode on screen: show loading indicator */
+.analytics-dashboard.print-mode .header-actions-analytics {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 /* ═══════════════════════════════════════════
@@ -653,16 +635,9 @@
     display: none !important;
   }
 
-  /* Show ALL tab panels in print */
-  .tab-content {
-    overflow: visible !important;
-  }
-
-  .tab-panel.tab-hidden {
-    position: relative !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    z-index: auto !important;
+  /* Show ALL tab panels in print — they are already rendered by printMode */
+  .tab-panel {
+    page-break-inside: avoid;
   }
 
   /* Show section titles in print */

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -50,10 +50,58 @@ function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [printMode, setPrintMode] = useState(false);
+  const printRef = useRef(null);
 
   const handlePrint = () => {
-    window.print();
+    setPrintMode(true);
   };
+
+  // When printMode activates: wait for all recharts SVGs to render, then print
+  useEffect(() => {
+    if (!printMode) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 60; // 60 × 50ms = 3s max wait
+
+    const waitForCharts = () => {
+      if (cancelled) return;
+      attempts++;
+
+      // Count all recharts-surface SVGs that have real rendered content
+      const container = printRef.current || document;
+      const svgs = container.querySelectorAll('.recharts-surface');
+      const allReady = svgs.length >= 6 && Array.from(svgs).every(svg => {
+        const w = parseFloat(svg.getAttribute('width'));
+        const h = parseFloat(svg.getAttribute('height'));
+        return w > 50 && h > 50;
+      });
+
+      if (allReady || attempts >= maxAttempts) {
+        // One final rAF to ensure paint is flushed
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (!cancelled) window.print();
+          });
+        });
+      } else {
+        setTimeout(waitForCharts, 50);
+      }
+    };
+
+    // Start polling after React commit + first paint
+    requestAnimationFrame(() => {
+      setTimeout(waitForCharts, 100);
+    });
+
+    const onAfterPrint = () => { setPrintMode(false); };
+    window.addEventListener('afterprint', onAfterPrint);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('afterprint', onAfterPrint);
+    };
+  }, [printMode]);
 
   useEffect(() => {
     const professionalUser = localStorage.getItem('professionalUser');
@@ -107,7 +155,7 @@ function AnalyticsDashboard() {
   ];
 
   return (
-    <div className="analytics-dashboard" dir="rtl">
+    <div className={`analytics-dashboard ${printMode ? 'print-mode' : ''}`} dir="rtl" ref={printRef}>
       {/* Header */}
       <div className="analytics-header">
         <div className="header-title">
@@ -160,21 +208,24 @@ function AnalyticsDashboard() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="analytics-tabs no-print">
-        {tabs.map(t => (
-          <button key={t.id} className={`tab-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
-            <span className="tab-icon">{t.icon}</span>
-            <span className="tab-label">{t.label}</span>
-          </button>
-        ))}
-      </div>
+      {!printMode && (
+        <div className="analytics-tabs">
+          {tabs.map(t => (
+            <button key={t.id} className={`tab-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
+              <span className="tab-icon">{t.icon}</span>
+              <span className="tab-label">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Tab Content — all sections always rendered for print */}
+      {/* Tab Content */}
       <div className="tab-content">
 
         {/* ===== OVERVIEW ===== */}
-        <div className={`tab-panel ${activeTab === 'overview' ? 'tab-active' : 'tab-hidden'}`}>
-          <h2 className="print-section-title">📊 نظرة عامة</h2>
+        {(activeTab === 'overview' || printMode) && (
+        <div className="tab-panel">
+          {printMode && <h2 className="print-section-title">📊 نظرة عامة</h2>}
           <div className="charts-section">
             <div className="charts-row">
               <div className="chart-card">
@@ -259,11 +310,12 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </div>)}
 
         {/* ===== DEMOGRAPHICS ===== */}
-        <div className={`tab-panel ${activeTab === 'demographics' ? 'tab-active' : 'tab-hidden'}`}>
-          <h2 className="print-section-title">👥 الفئات العمرية</h2>
+        {(activeTab === 'demographics' || printMode) && (
+        <div className="tab-panel">
+          {printMode && <h2 className="print-section-title">👥 الفئات العمرية</h2>}
           <div className="charts-section">
             <div className="charts-row">
               <div className="chart-card chart-full">
@@ -318,11 +370,12 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </div>)}
 
         {/* ===== STATUS ===== */}
-        <div className={`tab-panel ${activeTab === 'status' ? 'tab-active' : 'tab-hidden'}`}>
-          <h2 className="print-section-title">📋 الحالة والوضعية</h2>
+        {(activeTab === 'status' || printMode) && (
+        <div className="tab-panel">
+          {printMode && <h2 className="print-section-title">📋 الحالة والوضعية</h2>}
           <div className="charts-section">
             <div className="charts-row">
               <div className="chart-card">
@@ -371,11 +424,12 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </div>)}
 
         {/* ===== HEALTH ===== */}
-        <div className={`tab-panel ${activeTab === 'health' ? 'tab-active' : 'tab-hidden'}`}>
-          <h2 className="print-section-title">🏥 الصحة</h2>
+        {(activeTab === 'health' || printMode) && (
+        <div className="tab-panel">
+          {printMode && <h2 className="print-section-title">🏥 الصحة</h2>}
           <div className="charts-section">
             <div className="charts-row">
               <div className="chart-card chart-full">
@@ -432,11 +486,12 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </div>)}
 
         {/* ===== GEOGRAPHY ===== */}
-        <div className={`tab-panel ${activeTab === 'geography' ? 'tab-active' : 'tab-hidden'}`}>
-          <h2 className="print-section-title">🗺️ التوزيع الجغرافي</h2>
+        {(activeTab === 'geography' || printMode) && (
+        <div className="tab-panel">
+          {printMode && <h2 className="print-section-title">🗺️ التوزيع الجغرافي</h2>}
           <div className="charts-section">
             <div className="charts-row">
               <div className="chart-card">
@@ -492,11 +547,12 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </div>)}
 
         {/* ===== TIMELINE ===== */}
-        <div className={`tab-panel ${activeTab === 'timeline' ? 'tab-active' : 'tab-hidden'}`}>
-          <h2 className="print-section-title">📈 التطور الزمني</h2>
+        {(activeTab === 'timeline' || printMode) && (
+        <div className="tab-panel">
+          {printMode && <h2 className="print-section-title">📈 التطور الزمني</h2>}
           <div className="charts-section">
             <div className="charts-row">
               <div className="chart-card chart-full">
@@ -596,7 +652,7 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </div>)}
       </div>
 
       {/* Footer summary */}
