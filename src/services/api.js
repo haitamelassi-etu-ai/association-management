@@ -15,13 +15,6 @@ const getAPIBaseURL = () => {
 const API_BASE_URL = getAPIBaseURL()
 const API_URL = `${API_BASE_URL}/api`
 
-console.log('🔧 API Configuration:', { 
-  hostname: window.location.hostname, 
-  origin: window.location.origin,
-  API_BASE_URL,
-  API_URL
-})
-
 // Socket.io URL export for chat
 export const SOCKET_URL = API_BASE_URL
 
@@ -47,7 +40,6 @@ api.interceptors.request.use((config) => {
     }
   }
   
-  console.log('API Request:', config.url, 'Token:', config.headers.Authorization ? 'Present' : 'Missing')
   return config
 })
 
