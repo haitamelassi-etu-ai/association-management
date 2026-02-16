@@ -320,22 +320,74 @@ exports.importFromExcel = async (req, res) => {
           }
         }
 
-        // Parse date
+        // Parse date (handles DD/MM/YYYY, YYYY.MM.DD, YYYY-MM-DD, just YYYY)
         if (mapped.dateNaissance) {
-          const d = new Date(mapped.dateNaissance);
-          mapped.dateNaissance = isNaN(d.getTime()) ? undefined : d;
+          const raw = mapped.dateNaissance.toString().trim();
+          let d;
+          // DD/MM/YYYY
+          const dmy = raw.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+          if (dmy) {
+            d = new Date(parseInt(dmy[3]), parseInt(dmy[2]) - 1, parseInt(dmy[1]));
+          }
+          // YYYY.MM.DD or YYYY-MM-DD or YYYY/MM/DD
+          if (!d || isNaN(d.getTime())) {
+            const ymd = raw.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+            if (ymd) {
+              d = new Date(parseInt(ymd[1]), parseInt(ymd[2]) - 1, parseInt(ymd[3]));
+            }
+          }
+          // Just year
+          if (!d || isNaN(d.getTime())) {
+            const yearOnly = raw.match(/^(\d{4})$/);
+            if (yearOnly) {
+              d = new Date(parseInt(yearOnly[1]), 0, 1);
+            }
+          }
+          // Fallback
+          if (!d || isNaN(d.getTime())) {
+            d = new Date(raw);
+          }
+          mapped.dateNaissance = (d && !isNaN(d.getTime())) ? d : undefined;
         }
 
-        // Parse dateEntree
+        // Parse dateEntree (same flexible parsing)
         if (mapped.dateEntree) {
-          const d = new Date(mapped.dateEntree);
-          mapped.dateEntree = isNaN(d.getTime()) ? new Date() : d;
+          const raw = mapped.dateEntree.toString().trim();
+          let d;
+          const dmy = raw.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+          if (dmy) {
+            d = new Date(parseInt(dmy[3]), parseInt(dmy[2]) - 1, parseInt(dmy[1]));
+          }
+          if (!d || isNaN(d.getTime())) {
+            const ymd = raw.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+            if (ymd) {
+              d = new Date(parseInt(ymd[1]), parseInt(ymd[2]) - 1, parseInt(ymd[3]));
+            }
+          }
+          if (!d || isNaN(d.getTime())) {
+            d = new Date(raw);
+          }
+          mapped.dateEntree = (d && !isNaN(d.getTime())) ? d : new Date();
         }
 
-        // Parse dateSortie 
+        // Parse dateSortie (same flexible parsing)
         if (mapped.dateSortie) {
-          const d = new Date(mapped.dateSortie);
-          mapped.dateSortie = isNaN(d.getTime()) ? undefined : d;
+          const raw = mapped.dateSortie.toString().trim();
+          let d;
+          const dmy = raw.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+          if (dmy) {
+            d = new Date(parseInt(dmy[3]), parseInt(dmy[2]) - 1, parseInt(dmy[1]));
+          }
+          if (!d || isNaN(d.getTime())) {
+            const ymd = raw.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+            if (ymd) {
+              d = new Date(parseInt(ymd[1]), parseInt(ymd[2]) - 1, parseInt(ymd[3]));
+            }
+          }
+          if (!d || isNaN(d.getTime())) {
+            d = new Date(raw);
+          }
+          mapped.dateSortie = (d && !isNaN(d.getTime())) ? d : undefined;
         }
 
         // Normalize sexe
@@ -349,22 +401,30 @@ exports.importFromExcel = async (req, res) => {
         // Normalize situationType (الحالة الاجتماعية)
         if (mapped.situationType) {
           const st = mapped.situationType.toString().trim();
-          if (st === 'متشرد' || st.includes('mutasharrid') && !st.includes('mutasawwil')) mapped.situationType = 'mutasharrid';
-          else if (st === 'متشرد + متسول' || st === 'متشرد+متسول' || st === 'متشرد +متسول' || st === 'متشرد+ متسول') mapped.situationType = 'mutasharrid_mutasawwil';
-          else if (st === 'التسول' || st === 'تسول') mapped.situationType = 'tasawwul';
-          else if (st === 'تشرد') mapped.situationType = 'tasharrud';
-          else mapped.situationType = 'autre';
+          // Handle all spacing variations of متشرد + متسول
+          if (/متشرد\s*\+\s*متسول/.test(st) || st === 'متشرد+متسول') {
+            mapped.situationType = 'mutasharrid_mutasawwil';
+          } else if (/^متشرد$/.test(st)) {
+            mapped.situationType = 'mutasharrid';
+          } else if (st === 'التسول' || st === 'تسول') {
+            mapped.situationType = 'tasawwul';
+          } else if (st === 'تشرد') {
+            mapped.situationType = 'tasharrud';
+          } else {
+            mapped.situationType = 'autre';
+          }
         }
 
         // Normalize maBaadAlIwaa (ما بعد الايواء)
         if (mapped.maBaadAlIwaa) {
           const mb = mapped.maBaadAlIwaa.toString().trim();
-          if (mb === 'نزيل بالمركز') mapped.maBaadAlIwaa = 'nazil_bilmarkaz';
+          if (mb === 'نزيل بالمركز' || mb === 'نزيل') mapped.maBaadAlIwaa = 'nazil_bilmarkaz';
           else if (mb === 'مغادرة') mapped.maBaadAlIwaa = 'mughAdara';
-          else if (mb === 'ادماج اسري' || mb === 'إدماج أسري') mapped.maBaadAlIwaa = 'idmaj_usari';
+          else if (/ادماج|إدماج/.test(mb)) mapped.maBaadAlIwaa = 'idmaj_usari';
           else if (mb === 'فرار') mapped.maBaadAlIwaa = 'firAr';
           else if (mb === 'طرد') mapped.maBaadAlIwaa = 'tard';
           else if (mb === 'وفاة') mapped.maBaadAlIwaa = 'wafat';
+          // Leave as-is if doesn't match (will be stored as string)
         }
 
         // Normalize situation familiale
@@ -519,34 +579,91 @@ exports.getImportTemplate = async (req, res) => {
   try {
     const templateData = [
       {
-        'ر.ت': '1',
-        'الاسم الكامل': 'محمد أمين',
-        'تاريخ الازدياد': '1990-01-15',
-        'مكان الازدياد': 'الدار البيضاء',
-        'العنوان': 'حي المحمدي',
-        'الحالة الصحية': 'سليم',
-        'الجهة الموجهة': 'الشرطة',
-        'مكان التدخل': 'وسط المدينة',
+        'ر.ت': 1,
+        'الاسم الكامل': 'عزيز مقبول',
+        'تاريخ الازدياد': '13/01/1969',
+        'مكان الازدياد': 'البيضاء',
+        'العنوان': 'السعادة 303 ر 20 ر 68 ح/م',
+        'الحالة الصحية': 'جيدة',
+        'الجهة الموجهة': 'السلطات المحلية',
+        'مكان التدخل': 'الى المحمدي',
         'الحالة الاجتماعية': 'متشرد',
         'ما بعد الايواء': 'نزيل بالمركز',
-        'تاريخ الايواء': '2025-01-01',
+        'تاريخ الايواء': '2020.03.31',
         'تاريخ المغادرة': '',
-        'رقم البطاقة الوطنية': 'AB123456'
+        'رقم البطاقة الوطنية': 'BJ102114'
+      },
+      {
+        'ر.ت': 2,
+        'الاسم الكامل': 'عبد القادر ارجادي',
+        'تاريخ الازدياد': '27/07/1960',
+        'مكان الازدياد': 'البيضاء',
+        'العنوان': 'كريان الرحلة زنقة 29 رقم 15 عين السبع',
+        'الحالة الصحية': 'جيدة',
+        'الجهة الموجهة': 'السلطات المحلية',
+        'مكان التدخل': 'الى المحمدي',
+        'الحالة الاجتماعية': 'متشرد',
+        'ما بعد الايواء': 'مغادرة',
+        'تاريخ الايواء': '2020.03.31',
+        'تاريخ المغادرة': '2022.06.01',
+        'رقم البطاقة الوطنية': 'JB82900'
+      },
+      {
+        'ر.ت': 3,
+        'الاسم الكامل': 'سام الادريسي',
+        'تاريخ الازدياد': '1976',
+        'مكان الازدياد': 'سطات',
+        'العنوان': 'شارع الطاهر العلوي رقم',
+        'الحالة الصحية': 'جيدة',
+        'الجهة الموجهة': 'السلطات المحلية',
+        'مكان التدخل': 'الصخور السوداء',
+        'الحالة الاجتماعية': 'متشرد + متسول',
+        'ما بعد الايواء': 'ادماج اسري',
+        'تاريخ الايواء': '2020.03.31',
+        'تاريخ المغادرة': '2022.05.15',
+        'رقم البطاقة الوطنية': ''
+      },
+      {
+        'ر.ت': 4,
+        'الاسم الكامل': 'رشيد الحنجري',
+        'تاريخ الازدياد': '10/11/1975',
+        'مكان الازدياد': 'الجديدة',
+        'العنوان': 'درب الحرية الزنقة 17 الرقم 29 عين السبع',
+        'الحالة الصحية': 'إعاقة جسدية',
+        'الجهة الموجهة': 'السلطات المحلية',
+        'مكان التدخل': 'عين السبع',
+        'الحالة الاجتماعية': 'متشرد + متسول',
+        'ما بعد الايواء': 'فرار',
+        'تاريخ الايواء': '2020.03.31',
+        'تاريخ المغادرة': '2020.06.027',
+        'رقم البطاقة الوطنية': ''
       }
     ];
 
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(templateData);
     
-    // Set column widths (RTL columns)
+    // Set column widths
     worksheet['!cols'] = [
-      { wch: 8 }, { wch: 20 }, { wch: 16 }, { wch: 18 },
-      { wch: 20 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
-      { wch: 22 }, { wch: 20 }, { wch: 16 }, { wch: 16 },
-      { wch: 22 }
+      { wch: 6 },   // ر.ت
+      { wch: 22 },  // الاسم الكامل
+      { wch: 16 },  // تاريخ الازدياد
+      { wch: 14 },  // مكان الازدياد
+      { wch: 40 },  // العنوان
+      { wch: 16 },  // الحالة الصحية
+      { wch: 20 },  // الجهة الموجهة
+      { wch: 20 },  // مكان التدخل
+      { wch: 20 },  // الحالة الاجتماعية
+      { wch: 18 },  // ما بعد الايواء
+      { wch: 14 },  // تاريخ الايواء
+      { wch: 14 },  // تاريخ المغادرة
+      { wch: 22 }   // رقم البطاقة الوطنية
     ];
+
+    // Set RTL for the sheet
+    worksheet['!sheetViews'] = [{ rightToLeft: true }];
     
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Bénéficiaires');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'المستفيدين');
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

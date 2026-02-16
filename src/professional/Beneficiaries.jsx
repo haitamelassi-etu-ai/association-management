@@ -349,21 +349,27 @@ function Beneficiaries() {
       
       const wb = new ExcelJS.Workbook()
       wb.creator = 'ADDEL ALWAREF'
-      const ws = wb.addWorksheet('Bénéficiaires')
+      const ws = wb.addWorksheet('المستفيدين', { views: [{ rightToLeft: true }] })
 
-      // Header row - matching real data columns
-      const headerRow = ws.addRow([
+      // Header row - matching real data columns exactly
+      const headers = [
         'ر.ت', 'الاسم الكامل', 'تاريخ الازدياد', 'مكان الازدياد', 'العنوان',
         'الحالة الصحية', 'الجهة الموجهة', 'مكان التدخل', 'الحالة الاجتماعية',
         'ما بعد الايواء', 'تاريخ الايواء', 'تاريخ المغادرة', 'رقم البطاقة الوطنية'
-      ])
-      headerRow.eachCell(cell => {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } }
-        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11 }
-        cell.alignment = { horizontal: 'center', vertical: 'middle' }
+      ]
+      const headerRow = ws.addRow(headers)
+      headerRow.height = 28
+      headerRow.eachCell((cell, colNum) => {
+        // Alternate teal/dark blue like the screenshot
+        const isTeal = colNum % 2 === 0
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isTeal ? 'FF008B8B' : 'FF2F4F4F' } }
+        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11, name: 'Arial' }
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
         cell.border = {
-          top: { style: 'thin' }, bottom: { style: 'thin' },
-          left: { style: 'thin' }, right: { style: 'thin' }
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
         }
       })
 
@@ -384,24 +390,38 @@ function Beneficiaries() {
           b.dateSortie ? new Date(b.dateSortie).toLocaleDateString('fr-FR') : '',
           b.cin || ''
         ])
-        row.eachCell(cell => {
+        row.eachCell((cell, colNum) => {
           cell.border = {
-            top: { style: 'thin' }, bottom: { style: 'thin' },
-            left: { style: 'thin' }, right: { style: 'thin' }
+            top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+            bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+            left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+            right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
           }
-          cell.alignment = { vertical: 'middle' }
+          cell.alignment = { horizontal: 'center', vertical: 'middle' }
+          cell.font = { size: 10, name: 'Arial' }
+          // Alternate row colors
+          if (idx % 2 === 1) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F8FF' } }
+          }
         })
       })
 
-      // Auto-width
-      ws.columns.forEach(col => {
-        let maxLen = 12
-        col.eachCell(cell => {
-          const len = cell.value ? cell.value.toString().length : 0
-          if (len > maxLen) maxLen = Math.min(len + 2, 40)
-        })
-        col.width = maxLen
-      })
+      // Set column widths to match screenshot proportions
+      ws.columns = [
+        { width: 6 },   // ر.ت
+        { width: 22 },  // الاسم الكامل
+        { width: 16 },  // تاريخ الازدياد
+        { width: 14 },  // مكان الازدياد
+        { width: 40 },  // العنوان
+        { width: 16 },  // الحالة الصحية
+        { width: 20 },  // الجهة الموجهة
+        { width: 20 },  // مكان التدخل
+        { width: 20 },  // الحالة الاجتماعية
+        { width: 18 },  // ما بعد الايواء
+        { width: 14 },  // تاريخ الايواء
+        { width: 14 },  // تاريخ المغادرة
+        { width: 22 }   // رقم البطاقة الوطنية
+      ]
 
       const buffer = await wb.xlsx.writeBuffer()
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
