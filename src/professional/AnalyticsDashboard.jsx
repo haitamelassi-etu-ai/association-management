@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, cloneElement, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext, cloneElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -6,29 +6,21 @@ import {
   Tooltip, Legend, ResponsiveContainer, AreaChart, Area
 } from 'recharts';
 import { API_URL } from '../utils/api';
+import './AnalyticsDashboard.css';
 
-// Context to pass printMode to chart wrapper without prop drilling
 const PrintContext = createContext(false);
 
-// Wrapper that bypasses ResponsiveContainer during print mode
-// In print mode: renders chart with fixed pixel dimensions (no ResizeObserver)
-// In normal mode: uses ResponsiveContainer for responsive sizing
-const PrintChart = ({ height, children }) => {
-  const isPrint = useContext(PrintContext);
-  if (isPrint) {
+const PrintChart = ({ children, height = 300 }) => {
+  const printMode = useContext(PrintContext);
+  if (printMode) {
     return (
-      <div style={{ width: '100%', overflow: 'hidden' }}>
+      <div style={{ width: 900, height }}>
         {cloneElement(children, { width: 900, height })}
       </div>
     );
   }
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      {children}
-    </ResponsiveContainer>
-  );
+  return <ResponsiveContainer width="100%" height={height}>{children}</ResponsiveContainer>;
 };
-import './AnalyticsDashboard.css';
 
 const PALETTE = {
   primary: ['#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16'],
@@ -73,30 +65,6 @@ function AnalyticsDashboard() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
   const [printMode, setPrintMode] = useState(false);
-  const printRef = useRef(null);
-
-  const handlePrint = () => {
-    setPrintMode(true);
-  };
-
-  // When printMode activates: wait for React to render all charts with fixed dimensions, then print
-  useEffect(() => {
-    if (!printMode) return;
-    let cancelled = false;
-
-    // Charts now use fixed pixel dimensions (no ResizeObserver), only need paint time
-    const timer = setTimeout(() => {
-      if (!cancelled) window.print();
-    }, 800);
-
-    const onAfterPrint = () => { setPrintMode(false); };
-    window.addEventListener('afterprint', onAfterPrint);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-      window.removeEventListener('afterprint', onAfterPrint);
-    };
-  }, [printMode]);
 
   useEffect(() => {
     const professionalUser = localStorage.getItem('professionalUser');
@@ -108,7 +76,7 @@ function AnalyticsDashboard() {
     try {
       setLoading(true);
       const professionalUser = localStorage.getItem('professionalUser');
-      if (!professionalUser) { setError('ÙŠØ±Ø¬Ù‰ ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„'); setLoading(false); return; }
+      if (!professionalUser) { setError('يرجى تسجيل الدخول'); setLoading(false); return; }
       const { token } = JSON.parse(professionalUser);
       const res = await axios.get(`${API_URL}/analytics/beneficiaries/full`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -116,23 +84,39 @@ function AnalyticsDashboard() {
       if (res.data.success) setData(res.data.data);
     } catch (err) {
       console.error('Analytics error:', err);
-      setError(err.response?.data?.message || 'Ø®Ø·Ø£ ÙÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª');
+      setError(err.response?.data?.message || 'خطأ في تحميل البيانات');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (!printMode) return;
+    const timer = setTimeout(() => {
+      window.print();
+      setPrintMode(false);
+    }, 800);
+    const onAfterPrint = () => setPrintMode(false);
+    window.addEventListener('afterprint', onAfterPrint);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('afterprint', onAfterPrint);
+    };
+  }, [printMode]);
+
+  const handlePrint = () => setPrintMode(true);
+
   if (loading) return (
     <div className="analytics-loading">
       <div className="spinner"></div>
-      <p>Ø¬Ø§Ø±ÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø¥Ø­ØµØ§Ø¦ÙŠØ§Øª...</p>
+      <p>جاري تحميل الإحصائيات...</p>
     </div>
   );
 
   if (error) return (
     <div className="analytics-error">
       <p>{error}</p>
-      <button onClick={fetchData} className="btn-retry">Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø©</button>
+      <button onClick={fetchData} className="btn-retry">إعادة المحاولة</button>
     </div>
   );
 
@@ -141,93 +125,92 @@ function AnalyticsDashboard() {
   const { overview, maBaad, situation, health, lieuIntervention, entiteOrientatrice, birthPlace, age, entryTimeline, monthlyEntry, departTimeline, stayDuration, entryVsExit, cin } = data;
 
   const tabs = [
-    { id: 'overview', label: 'Ù†Ø¸Ø±Ø© Ø¹Ø§Ù…Ø©', icon: 'ðŸ“Š' },
-    { id: 'demographics', label: 'Ø§Ù„ÙØ¦Ø§Øª Ø§Ù„Ø¹Ù…Ø±ÙŠØ©', icon: 'ðŸ‘¥' },
-    { id: 'status', label: 'Ø§Ù„Ø­Ø§Ù„Ø© ÙˆØ§Ù„ÙˆØ¶Ø¹ÙŠØ©', icon: 'ðŸ“‹' },
-    { id: 'health', label: 'Ø§Ù„ØµØ­Ø©', icon: 'ðŸ¥' },
-    { id: 'geography', label: 'Ø§Ù„ØªÙˆØ²ÙŠØ¹ Ø§Ù„Ø¬ØºØ±Ø§ÙÙŠ', icon: 'ðŸ—ºï¸' },
-    { id: 'timeline', label: 'Ø§Ù„ØªØ·ÙˆØ± Ø§Ù„Ø²Ù…Ù†ÙŠ', icon: 'ðŸ“ˆ' },
+    { id: 'overview', label: 'نظرة عامة', icon: '📊' },
+    { id: 'demographics', label: 'الفئات العمرية', icon: '👥' },
+    { id: 'status', label: 'الحالة والوضعية', icon: '📋' },
+    { id: 'health', label: 'الصحة', icon: '🏥' },
+    { id: 'geography', label: 'التوزيع الجغرافي', icon: '🗺️' },
+    { id: 'timeline', label: 'التطور الزمني', icon: '📈' },
   ];
 
   return (
     <PrintContext.Provider value={printMode}>
-    <div className={`analytics-dashboard ${printMode ? 'print-mode' : ''}`} dir="rtl" ref={printRef}>
+    <div className={`analytics-dashboard${printMode ? ' print-mode' : ''}`} dir="rtl">
       {/* Header */}
       <div className="analytics-header">
         <div className="header-title">
-          <h1>ðŸ“Š Ù„ÙˆØ­Ø© Ø§Ù„Ø¥Ø­ØµØ§Ø¦ÙŠØ§Øª ÙˆØ§Ù„ØªØ­Ù„ÙŠÙ„Ø§Øª</h1>
-          <p className="header-subtitle">ØªØ­Ù„ÙŠÙ„ Ø´Ø§Ù…Ù„ Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø³ØªÙÙŠØ¯ÙŠÙ†</p>
+          <h1>📊 لوحة الإحصائيات والتحليلات</h1>
+          <p className="header-subtitle">تحليل شامل لبيانات المستفيدين</p>
         </div>
         <div className="header-actions-analytics">
-          <button onClick={handlePrint} className="btn-print">ðŸ–¨ï¸ Ø·Ø¨Ø§Ø¹Ø© Ø§Ù„ØªÙ‚Ø§Ø±ÙŠØ±</button>
-          <button onClick={fetchData} className="btn-refresh">ðŸ”„ ØªØ­Ø¯ÙŠØ«</button>
+          <button onClick={handlePrint} className="btn-print" disabled={printMode}>
+            {printMode ? '⏳ جاري التحضير...' : '🖨️ طباعة التقارير'}
+          </button>
+          <button onClick={fetchData} className="btn-refresh">🔄 تحديث</button>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="kpi-grid">
         <div className="kpi-card kpi-total">
-          <div className="kpi-icon">ðŸ‘¥</div>
+          <div className="kpi-icon">👥</div>
           <div className="kpi-info">
-            <span className="kpi-label">Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹ Ø§Ù„ÙƒÙ„ÙŠ</span>
+            <span className="kpi-label">المجموع الكلي</span>
             <span className="kpi-value">{overview.total}</span>
           </div>
         </div>
         <div className="kpi-card kpi-heberge">
-          <div className="kpi-icon">ðŸ </div>
+          <div className="kpi-icon">🏠</div>
           <div className="kpi-info">
-            <span className="kpi-label">Ù†Ø²Ù„Ø§Ø¡ Ø­Ø§Ù„ÙŠÙˆÙ†</span>
+            <span className="kpi-label">نزلاء حاليون</span>
             <span className="kpi-value">{overview.heberge}</span>
           </div>
         </div>
         <div className="kpi-card kpi-sorti">
-          <div className="kpi-icon">ðŸšª</div>
+          <div className="kpi-icon">🚪</div>
           <div className="kpi-info">
-            <span className="kpi-label">Ø®Ø±Ø¬ÙˆØ§</span>
+            <span className="kpi-label">خرجوا</span>
             <span className="kpi-value">{overview.sorti}</span>
           </div>
         </div>
         <div className="kpi-card kpi-cin">
-          <div className="kpi-icon">ðŸªª</div>
+          <div className="kpi-icon">🪪</div>
           <div className="kpi-info">
-            <span className="kpi-label">ÙŠØ­Ù…Ù„ÙˆÙ† Ø¨.Ùˆ.Øª</span>
+            <span className="kpi-label">يحملون ب.و.ت</span>
             <span className="kpi-value">{overview.withCIN}</span>
           </div>
         </div>
         <div className="kpi-card kpi-stay">
-          <div className="kpi-icon">ðŸ“…</div>
+          <div className="kpi-icon">📅</div>
           <div className="kpi-info">
-            <span className="kpi-label">Ù…ØªÙˆØ³Ø· Ø§Ù„Ø¥Ù‚Ø§Ù…Ø©</span>
-            <span className="kpi-value">{overview.avgStayDays} <small>ÙŠÙˆÙ…</small></span>
+            <span className="kpi-label">متوسط الإقامة</span>
+            <span className="kpi-value">{overview.avgStayDays} <small>يوم</small></span>
           </div>
         </div>
       </div>
 
       {/* Tab Navigation */}
-      {!printMode && (
-        <div className="analytics-tabs">
-          {tabs.map(t => (
-            <button key={t.id} className={`tab-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
-              <span className="tab-icon">{t.icon}</span>
-              <span className="tab-label">{t.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="analytics-tabs">
+        {tabs.map(t => (
+          <button key={t.id} className={`tab-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
+            <span className="tab-icon">{t.icon}</span>
+            <span className="tab-label">{t.label}</span>
+          </button>
+        ))}
+      </div>
 
       {/* Tab Content */}
       <div className="tab-content">
 
         {/* ===== OVERVIEW ===== */}
         {(activeTab === 'overview' || printMode) && (
-        <div className="tab-panel">
-          {printMode && <h2 className="print-section-title">ðŸ“Š Ù†Ø¸Ø±Ø© Ø¹Ø§Ù…Ø©</h2>}
           <div className="charts-section">
+            {printMode && <h2 className="print-section-title">نظرة عامة</h2>}
             <div className="charts-row">
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>ðŸ  Ù…Ø§Ø¨Ø¹Ø¯ Ø§Ù„Ø§ÙŠÙˆØ§Ø¡</h3>
-                  <span className="chart-badge">{maBaad.length} ÙØ¦Ø§Øª</span>
+                  <h3>🏠 مابعد الايواء</h3>
+                  <span className="chart-badge">{maBaad.length} فئات</span>
                 </div>
                 <PrintChart height={320}>
                   <PieChart>
@@ -251,8 +234,8 @@ function AnalyticsDashboard() {
 
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>ðŸ“‹ Ù†ÙˆØ¹ Ø§Ù„ÙˆØ¶Ø¹ÙŠØ©</h3>
-                  <span className="chart-badge">{situation.length} Ø£Ù†ÙˆØ§Ø¹</span>
+                  <h3>📋 نوع الوضعية</h3>
+                  <span className="chart-badge">{situation.length} أنواع</span>
                 </div>
                 <PrintChart height={320}>
                   <PieChart>
@@ -277,7 +260,7 @@ function AnalyticsDashboard() {
 
             <div className="charts-row">
               <div className="chart-card chart-narrow">
-                <div className="chart-header"><h3>ðŸªª Ø§Ù„Ø¨Ø·Ø§Ù‚Ø© Ø§Ù„ÙˆØ·Ù†ÙŠØ©</h3></div>
+                <div className="chart-header"><h3>🪪 البطاقة الوطنية</h3></div>
                 <PrintChart height={250}>
                   <PieChart>
                     <Pie data={cin} cx="50%" cy="50%" outerRadius={90} innerRadius={40} dataKey="value"
@@ -291,7 +274,7 @@ function AnalyticsDashboard() {
               </div>
 
               <div className="chart-card chart-wide">
-                <div className="chart-header"><h3>ðŸ“ˆ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù…Ù‚Ø§Ø¨Ù„ Ø§Ù„Ø®Ø±ÙˆØ¬ Ø­Ø³Ø¨ Ø§Ù„Ø³Ù†Ø©</h3></div>
+                <div className="chart-header"><h3>📈 الدخول مقابل الخروج حسب السنة</h3></div>
                 <PrintChart height={280}>
                   <BarChart data={entryVsExit} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -299,30 +282,29 @@ function AnalyticsDashboard() {
                     <YAxis stroke="#6b7280" fontSize={12} />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
-                    <Bar dataKey="entries" name="Ø§Ù„Ø¯Ø®ÙˆÙ„" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="exits" name="Ø§Ù„Ø®Ø±ÙˆØ¬" fill="#f97316" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="entries" name="الدخول" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="exits" name="الخروج" fill="#f97316" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </PrintChart>
               </div>
             </div>
           </div>
-        </div>)}
+        )}
 
         {/* ===== DEMOGRAPHICS ===== */}
         {(activeTab === 'demographics' || printMode) && (
-        <div className="tab-panel">
-          {printMode && <h2 className="print-section-title">ðŸ‘¥ Ø§Ù„ÙØ¦Ø§Øª Ø§Ù„Ø¹Ù…Ø±ÙŠØ©</h2>}
           <div className="charts-section">
+            {printMode && <h2 className="print-section-title">الفئات العمرية والديموغرافيا</h2>}
             <div className="charts-row">
               <div className="chart-card chart-full">
-                <div className="chart-header"><h3>ðŸŽ‚ Ø§Ù„ØªÙˆØ²ÙŠØ¹ Ø­Ø³Ø¨ Ø§Ù„ÙØ¦Ø§Øª Ø§Ù„Ø¹Ù…Ø±ÙŠØ©</h3></div>
+                <div className="chart-header"><h3>🎂 التوزيع حسب الفئات العمرية</h3></div>
                 <PrintChart height={350}>
                   <BarChart data={age} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="name" stroke="#6b7280" fontSize={13} />
                     <YAxis stroke="#6b7280" fontSize={12} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" name="Ø§Ù„Ø¹Ø¯Ø¯" radius={[6, 6, 0, 0]}>
+                    <Bar dataKey="value" name="العدد" radius={[6, 6, 0, 0]}>
                       {age.map((_, i) => <Cell key={i} fill={PALETTE.age[i % PALETTE.age.length]} />)}
                     </Bar>
                   </BarChart>
@@ -331,7 +313,7 @@ function AnalyticsDashboard() {
             </div>
             <div className="charts-row">
               <div className="chart-card">
-                <div className="chart-header"><h3>ðŸ“Š Ù†Ø³Ø¨ Ø§Ù„ÙØ¦Ø§Øª Ø§Ù„Ø¹Ù…Ø±ÙŠØ©</h3></div>
+                <div className="chart-header"><h3>📊 نسب الفئات العمرية</h3></div>
                 <PrintChart height={320}>
                   <PieChart>
                     <Pie data={age} cx="50%" cy="50%" outerRadius={110} innerRadius={50} dataKey="value"
@@ -353,36 +335,35 @@ function AnalyticsDashboard() {
               </div>
 
               <div className="chart-card">
-                <div className="chart-header"><h3>â±ï¸ Ù…Ø¯Ø© Ø§Ù„Ø¥Ù‚Ø§Ù…Ø©</h3></div>
+                <div className="chart-header"><h3>⏱️ مدة الإقامة</h3></div>
                 <PrintChart height={320}>
                   <BarChart data={stayDuration} layout="vertical" margin={{ top: 10, right: 30, left: 80, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
                     <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={12} width={80} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" name="Ø§Ù„Ø¹Ø¯Ø¯" fill="#8b5cf6" radius={[0, 6, 6, 0]} />
+                    <Bar dataKey="value" name="العدد" fill="#8b5cf6" radius={[0, 6, 6, 0]} />
                   </BarChart>
                 </PrintChart>
               </div>
             </div>
           </div>
-        </div>)}
+        )}
 
         {/* ===== STATUS ===== */}
         {(activeTab === 'status' || printMode) && (
-        <div className="tab-panel">
-          {printMode && <h2 className="print-section-title">ðŸ“‹ Ø§Ù„Ø­Ø§Ù„Ø© ÙˆØ§Ù„ÙˆØ¶Ø¹ÙŠØ©</h2>}
           <div className="charts-section">
+            {printMode && <h2 className="print-section-title">الحالة والوضعية</h2>}
             <div className="charts-row">
               <div className="chart-card">
-                <div className="chart-header"><h3>ðŸ  Ù…Ø§Ø¨Ø¹Ø¯ Ø§Ù„Ø§ÙŠÙˆØ§Ø¡ - ØªÙØµÙŠÙ„</h3></div>
+                <div className="chart-header"><h3>🏠 مابعد الايواء - تفصيل</h3></div>
                 <PrintChart height={350}>
                   <BarChart data={maBaad} layout="vertical" margin={{ top: 10, right: 30, left: 100, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
                     <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={13} width={100} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" name="Ø§Ù„Ø¹Ø¯Ø¯" radius={[0, 6, 6, 0]}>
+                    <Bar dataKey="value" name="العدد" radius={[0, 6, 6, 0]}>
                       {maBaad.map((_, i) => <Cell key={i} fill={PALETTE.maBaad[i % PALETTE.maBaad.length]} />)}
                     </Bar>
                   </BarChart>
@@ -390,14 +371,14 @@ function AnalyticsDashboard() {
               </div>
 
               <div className="chart-card">
-                <div className="chart-header"><h3>ðŸ“‹ Ù†ÙˆØ¹ Ø§Ù„ÙˆØ¶Ø¹ÙŠØ© - ØªÙØµÙŠÙ„</h3></div>
+                <div className="chart-header"><h3>📋 نوع الوضعية - تفصيل</h3></div>
                 <PrintChart height={350}>
                   <BarChart data={situation} layout="vertical" margin={{ top: 10, right: 30, left: 120, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
                     <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={13} width={120} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" name="Ø§Ù„Ø¹Ø¯Ø¯" radius={[0, 6, 6, 0]}>
+                    <Bar dataKey="value" name="العدد" radius={[0, 6, 6, 0]}>
                       {situation.map((_, i) => <Cell key={i} fill={PALETTE.primary[i % PALETTE.primary.length]} />)}
                     </Bar>
                   </BarChart>
@@ -407,7 +388,7 @@ function AnalyticsDashboard() {
 
             <div className="charts-row">
               <div className="chart-card chart-full">
-                <div className="chart-header"><h3>ðŸ“Š Ù…Ù„Ø®Øµ Ø§Ù„Ø­Ø§Ù„Ø§Øª</h3></div>
+                <div className="chart-header"><h3>📊 ملخص الحالات</h3></div>
                 <div className="data-cards-grid">
                   {maBaad.map((d, i) => (
                     <div key={i} className="data-stat-card" style={{ borderRightColor: PALETTE.maBaad[i % PALETTE.maBaad.length] }}>
@@ -420,23 +401,22 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        </div>)}
+        )}
 
         {/* ===== HEALTH ===== */}
         {(activeTab === 'health' || printMode) && (
-        <div className="tab-panel">
-          {printMode && <h2 className="print-section-title">ðŸ¥ Ø§Ù„ØµØ­Ø©</h2>}
           <div className="charts-section">
+            {printMode && <h2 className="print-section-title">الصحة</h2>}
             <div className="charts-row">
               <div className="chart-card chart-full">
-                <div className="chart-header"><h3>ðŸ¥ ØªÙˆØ²ÙŠØ¹ Ø§Ù„Ø­Ø§Ù„Ø© Ø§Ù„ØµØ­ÙŠØ©</h3></div>
+                <div className="chart-header"><h3>🏥 توزيع الحالة الصحية</h3></div>
                 <PrintChart height={400}>
                   <BarChart data={health} layout="vertical" margin={{ top: 10, right: 30, left: 120, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
                     <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={13} width={120} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" name="Ø§Ù„Ø¹Ø¯Ø¯" radius={[0, 6, 6, 0]}>
+                    <Bar dataKey="value" name="العدد" radius={[0, 6, 6, 0]}>
                       {health.map((_, i) => <Cell key={i} fill={PALETTE.health[i % PALETTE.health.length]} />)}
                     </Bar>
                   </BarChart>
@@ -446,7 +426,7 @@ function AnalyticsDashboard() {
 
             <div className="charts-row">
               <div className="chart-card">
-                <div className="chart-header"><h3>ðŸ“Š Ù†Ø³Ø¨ Ø§Ù„Ø­Ø§Ù„Ø© Ø§Ù„ØµØ­ÙŠØ©</h3></div>
+                <div className="chart-header"><h3>📊 نسب الحالة الصحية</h3></div>
                 <PrintChart height={350}>
                   <PieChart>
                     <Pie data={health.slice(0, 6)} cx="50%" cy="50%" outerRadius={120} innerRadius={50} dataKey="value"
@@ -459,11 +439,11 @@ function AnalyticsDashboard() {
               </div>
 
               <div className="chart-card">
-                <div className="chart-header"><h3>ðŸ“‹ Ø¬Ø¯ÙˆÙ„ Ø§Ù„Ø­Ø§Ù„Ø© Ø§Ù„ØµØ­ÙŠØ©</h3></div>
+                <div className="chart-header"><h3>📋 جدول الحالة الصحية</h3></div>
                 <div className="data-table-wrapper">
                   <table className="data-table">
                     <thead>
-                      <tr><th>Ø§Ù„Ø­Ø§Ù„Ø©</th><th>Ø§Ù„Ø¹Ø¯Ø¯</th><th>Ø§Ù„Ù†Ø³Ø¨Ø©</th></tr>
+                      <tr><th>الحالة</th><th>العدد</th><th>النسبة</th></tr>
                     </thead>
                     <tbody>
                       {health.map((d, i) => (
@@ -482,23 +462,22 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        </div>)}
+        )}
 
         {/* ===== GEOGRAPHY ===== */}
         {(activeTab === 'geography' || printMode) && (
-        <div className="tab-panel">
-          {printMode && <h2 className="print-section-title">ðŸ—ºï¸ Ø§Ù„ØªÙˆØ²ÙŠØ¹ Ø§Ù„Ø¬ØºØ±Ø§ÙÙŠ</h2>}
           <div className="charts-section">
+            {printMode && <h2 className="print-section-title">التوزيع الجغرافي</h2>}
             <div className="charts-row">
               <div className="chart-card">
-                <div className="chart-header"><h3>ðŸ—ºï¸ Ù…ÙƒØ§Ù† Ø§Ù„ØªØ¯Ø®Ù„</h3></div>
+                <div className="chart-header"><h3>🗺️ مكان التدخل</h3></div>
                 <PrintChart height={350}>
                   <BarChart data={lieuIntervention} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
                     <YAxis stroke="#6b7280" fontSize={12} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" name="Ø§Ù„Ø¹Ø¯Ø¯" radius={[6, 6, 0, 0]}>
+                    <Bar dataKey="value" name="العدد" radius={[6, 6, 0, 0]}>
                       {lieuIntervention.map((_, i) => <Cell key={i} fill={PALETTE.lieu[i % PALETTE.lieu.length]} />)}
                     </Bar>
                   </BarChart>
@@ -515,14 +494,14 @@ function AnalyticsDashboard() {
               </div>
 
               <div className="chart-card">
-                <div className="chart-header"><h3>ðŸ›ï¸ Ø§Ù„Ø¬Ù‡Ø© Ø§Ù„Ù…ÙˆØ¬Ù‡Ø©</h3></div>
+                <div className="chart-header"><h3>🏛️ الجهة الموجهة</h3></div>
                 <PrintChart height={350}>
                   <BarChart data={entiteOrientatrice} layout="vertical" margin={{ top: 10, right: 30, left: 140, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
                     <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={12} width={140} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" name="Ø§Ù„Ø¹Ø¯Ø¯" fill="#0ea5e9" radius={[0, 6, 6, 0]} />
+                    <Bar dataKey="value" name="العدد" fill="#0ea5e9" radius={[0, 6, 6, 0]} />
                   </BarChart>
                 </PrintChart>
               </div>
@@ -530,29 +509,28 @@ function AnalyticsDashboard() {
 
             <div className="charts-row">
               <div className="chart-card chart-full">
-                <div className="chart-header"><h3>ðŸ™ï¸ Ø£Ù‡Ù… Ù…Ø¯Ù† Ø§Ù„Ø§Ø²Ø¯ÙŠØ§Ø¯ (Ø£Ø¹Ù„Ù‰ 20)</h3></div>
+                <div className="chart-header"><h3>🏙️ أهم مدن الازدياد (أعلى 20)</h3></div>
                 <PrintChart height={400}>
                   <BarChart data={birthPlace} layout="vertical" margin={{ top: 10, right: 30, left: 120, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
                     <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={12} width={120} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" name="Ø§Ù„Ø¹Ø¯Ø¯" fill="#14b8a6" radius={[0, 6, 6, 0]} />
+                    <Bar dataKey="value" name="العدد" fill="#14b8a6" radius={[0, 6, 6, 0]} />
                   </BarChart>
                 </PrintChart>
               </div>
             </div>
           </div>
-        </div>)}
+        )}
 
         {/* ===== TIMELINE ===== */}
         {(activeTab === 'timeline' || printMode) && (
-        <div className="tab-panel">
-          {printMode && <h2 className="print-section-title">ðŸ“ˆ Ø§Ù„ØªØ·ÙˆØ± Ø§Ù„Ø²Ù…Ù†ÙŠ</h2>}
           <div className="charts-section">
+            {printMode && <h2 className="print-section-title">التطور الزمني</h2>}
             <div className="charts-row">
               <div className="chart-card chart-full">
-                <div className="chart-header"><h3>ðŸ“ˆ ØªØ·ÙˆØ± Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø­Ø³Ø¨ Ø§Ù„Ø³Ù†Ø©</h3></div>
+                <div className="chart-header"><h3>📈 تطور الدخول حسب السنة</h3></div>
                 <PrintChart height={300}>
                   <AreaChart data={entryTimeline} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <defs>
@@ -565,7 +543,7 @@ function AnalyticsDashboard() {
                     <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
                     <YAxis stroke="#6b7280" fontSize={12} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Area type="monotone" dataKey="value" name="Ø§Ù„Ø¯Ø®ÙˆÙ„" stroke="#0ea5e9" strokeWidth={3}
+                    <Area type="monotone" dataKey="value" name="الدخول" stroke="#0ea5e9" strokeWidth={3}
                       fill="url(#colorEntry)" dot={{ fill: '#0ea5e9', r: 4 }} activeDot={{ r: 6 }} />
                   </AreaChart>
                 </PrintChart>
@@ -574,7 +552,7 @@ function AnalyticsDashboard() {
 
             <div className="charts-row">
               <div className="chart-card chart-full">
-                <div className="chart-header"><h3>ðŸ“Š Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù…Ù‚Ø§Ø¨Ù„ Ø§Ù„Ø®Ø±ÙˆØ¬ Ø­Ø³Ø¨ Ø§Ù„Ø³Ù†Ø©</h3></div>
+                <div className="chart-header"><h3>📊 الدخول مقابل الخروج حسب السنة</h3></div>
                 <PrintChart height={350}>
                   <BarChart data={entryVsExit} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -582,8 +560,8 @@ function AnalyticsDashboard() {
                     <YAxis stroke="#6b7280" fontSize={12} />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
-                    <Bar dataKey="entries" name="Ø§Ù„Ø¯Ø®ÙˆÙ„" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="exits" name="Ø§Ù„Ø®Ø±ÙˆØ¬" fill="#f97316" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="entries" name="الدخول" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="exits" name="الخروج" fill="#f97316" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </PrintChart>
               </div>
@@ -592,7 +570,7 @@ function AnalyticsDashboard() {
             {monthlyEntry.length > 0 && (
               <div className="charts-row">
                 <div className="chart-card chart-full">
-                  <div className="chart-header"><h3>ðŸ“… Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø§Ù„Ø´Ù‡Ø±ÙŠ (Ø¢Ø®Ø± Ø³Ù†ØªÙŠÙ†)</h3></div>
+                  <div className="chart-header"><h3>📅 الدخول الشهري (آخر سنتين)</h3></div>
                   <PrintChart height={300}>
                     <AreaChart data={monthlyEntry} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                       <defs>
@@ -605,7 +583,7 @@ function AnalyticsDashboard() {
                       <XAxis dataKey="name" stroke="#6b7280" fontSize={11} angle={-25} textAnchor="end" height={60} />
                       <YAxis stroke="#6b7280" fontSize={12} />
                       <Tooltip content={<CustomTooltip />} />
-                      <Area type="monotone" dataKey="value" name="Ø§Ù„Ø¯Ø®ÙˆÙ„" stroke="#22c55e" strokeWidth={2}
+                      <Area type="monotone" dataKey="value" name="الدخول" stroke="#22c55e" strokeWidth={2}
                         fill="url(#colorMonthly)" dot={{ fill: '#22c55e', r: 3 }} />
                     </AreaChart>
                   </PrintChart>
@@ -615,7 +593,7 @@ function AnalyticsDashboard() {
 
             <div className="charts-row">
               <div className="chart-card">
-                <div className="chart-header"><h3>ðŸšª ØªØ·ÙˆØ± Ø§Ù„Ø®Ø±ÙˆØ¬ Ø­Ø³Ø¨ Ø§Ù„Ø³Ù†Ø©</h3></div>
+                <div className="chart-header"><h3>🚪 تطور الخروج حسب السنة</h3></div>
                 <PrintChart height={300}>
                   <AreaChart data={departTimeline} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <defs>
@@ -628,46 +606,46 @@ function AnalyticsDashboard() {
                     <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
                     <YAxis stroke="#6b7280" fontSize={12} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Area type="monotone" dataKey="value" name="Ø§Ù„Ø®Ø±ÙˆØ¬" stroke="#f97316" strokeWidth={2}
+                    <Area type="monotone" dataKey="value" name="الخروج" stroke="#f97316" strokeWidth={2}
                       fill="url(#colorDepart)" dot={{ fill: '#f97316', r: 4 }} />
                   </AreaChart>
                 </PrintChart>
               </div>
 
               <div className="chart-card">
-                <div className="chart-header"><h3>â±ï¸ Ù…Ø¯Ø© Ø§Ù„Ø¥Ù‚Ø§Ù…Ø©</h3></div>
+                <div className="chart-header"><h3>⏱️ مدة الإقامة</h3></div>
                 <PrintChart height={300}>
                   <BarChart data={stayDuration} layout="vertical" margin={{ top: 10, right: 30, left: 80, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis type="number" stroke="#6b7280" fontSize={12} />
                     <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={12} width={80} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" name="Ø§Ù„Ø¹Ø¯Ø¯" fill="#8b5cf6" radius={[0, 6, 6, 0]} />
+                    <Bar dataKey="value" name="العدد" fill="#8b5cf6" radius={[0, 6, 6, 0]} />
                   </BarChart>
                 </PrintChart>
               </div>
             </div>
           </div>
-        </div>)}
+        )}
       </div>
 
       {/* Footer summary */}
       <div className="analytics-footer">
         <div className="footer-stat">
-          <span className="footer-label">Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹</span>
+          <span className="footer-label">المجموع</span>
           <span className="footer-val">{overview.total}</span>
         </div>
         <div className="footer-stat">
-          <span className="footer-label">Ù†Ø²Ù„Ø§Ø¡</span>
+          <span className="footer-label">نزلاء</span>
           <span className="footer-val">{overview.heberge}</span>
         </div>
         <div className="footer-stat">
-          <span className="footer-label">Ø®Ø±Ø¬ÙˆØ§</span>
+          <span className="footer-label">خرجوا</span>
           <span className="footer-val">{overview.sorti}</span>
         </div>
         <div className="footer-stat">
-          <span className="footer-label">Ù…ØªÙˆØ³Ø· Ø§Ù„Ø¥Ù‚Ø§Ù…Ø©</span>
-          <span className="footer-val">{overview.avgStayDays} ÙŠÙˆÙ…</span>
+          <span className="footer-label">متوسط الإقامة</span>
+          <span className="footer-val">{overview.avgStayDays} يوم</span>
         </div>
       </div>
     </div>
