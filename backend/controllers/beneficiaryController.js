@@ -9,7 +9,7 @@ const XLSX = require('xlsx');
 // @access  Private
 exports.getBeneficiaries = async (req, res) => {
   try {
-    const { statut, search, situationType, sexe, page = 1, limit = 500 } = req.query;
+    const { statut, search, situationType, sexe, page = 1, limit = 0 } = req.query;
     
     let query = {};
     
@@ -29,20 +29,25 @@ exports.getBeneficiaries = async (req, res) => {
       ];
     }
     
-    const beneficiaries = await Beneficiary.find(query)
+    let queryBuilder = Beneficiary.find(query)
       .populate('createdBy', 'nom prenom')
       .populate('updatedBy', 'nom prenom')
       .populate('caseWorker', 'nom prenom')
-      .sort({ dateEntree: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .sort({ numeroOrdre: 1 });
+    
+    // Only apply pagination if limit > 0
+    if (parseInt(limit) > 0) {
+      queryBuilder = queryBuilder.limit(parseInt(limit)).skip((page - 1) * parseInt(limit));
+    }
+
+    const beneficiaries = await queryBuilder;
     
     const count = await Beneficiary.countDocuments(query);
     
     res.status(200).json({
       success: true,
       count,
-      totalPages: Math.ceil(count / limit),
+      totalPages: parseInt(limit) > 0 ? Math.ceil(count / parseInt(limit)) : 1,
       currentPage: page,
       data: beneficiaries
     });

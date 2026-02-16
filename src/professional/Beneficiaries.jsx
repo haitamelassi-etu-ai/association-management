@@ -52,7 +52,7 @@ function Beneficiaries() {
   const [beneficiaries, setBeneficiaries] = useState([])
   const [stats, setStats] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatut, setFilterStatut] = useState('all')
+  const [filterStatut, setFilterStatut] = useState('heberge')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editBeneficiary, setEditBeneficiary] = useState(null)
