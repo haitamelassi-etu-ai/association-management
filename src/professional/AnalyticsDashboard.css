@@ -31,6 +31,30 @@
   margin: 0.25rem 0 0;
 }
 
+.header-actions-analytics {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.btn-print {
+  padding: 0.6rem 1.2rem;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-print:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
 .btn-refresh {
   padding: 0.6rem 1.2rem;
   background: linear-gradient(135deg, #0ea5e9, #0284c7);
@@ -547,5 +571,163 @@
 
   .analytics-footer {
     flex-direction: column;
+  }
+}
+
+/* ── Print Section Title ── */
+.print-section-title {
+  font-size: 1.3rem;
+  color: #1e293b;
+  font-weight: 800;
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  page-break-before: always;
+}
+
+.print-section-title:first-of-type {
+  page-break-before: auto;
+}
+
+/* ── Print All mode ── */
+.tab-content.print-all {
+  display: block;
+}
+
+/* ═══════════════════════════════════════════
+   Print Styles
+   ═══════════════════════════════════════════ */
+@media print {
+  /* Reset page */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+
+  @page {
+    size: A4 landscape;
+    margin: 12mm 10mm;
+  }
+
+  /* Hide everything outside analytics */
+  body > *:not(#root),
+  .dashboard-sidebar,
+  .mobile-menu-toggle,
+  .sidebar-overlay,
+  .analytics-tabs,
+  .btn-refresh,
+  .btn-print,
+  .header-actions-analytics,
+  .btn-retry,
+  nav, header:not(.analytics-header) {
+    display: none !important;
+  }
+
+  /* Full width */
+  .dashboard-main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .analytics-dashboard {
+    padding: 0;
+    max-width: 100%;
+  }
+
+  /* Header for print */
+  .analytics-header {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #1e293b;
+    page-break-after: avoid;
+  }
+
+  .header-title h1 { font-size: 1.4rem; }
+  .header-subtitle { font-size: 0.8rem; }
+
+  /* KPI Cards */
+  .kpi-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    page-break-after: avoid;
+  }
+
+  .kpi-card {
+    padding: 0.6rem;
+    border-radius: 6px;
+    box-shadow: none;
+    border: 1px solid #e2e8f0;
+  }
+
+  .kpi-icon { font-size: 1.2rem; width: 32px; height: 32px; }
+  .kpi-value { font-size: 1.3rem; }
+  .kpi-label { font-size: 0.7rem; }
+
+  /* Print section titles */
+  .print-section-title {
+    font-size: 1.1rem;
+    margin: 1rem 0 0.5rem;
+    page-break-before: always;
+    page-break-after: avoid;
+  }
+
+  .print-section-title:first-of-type {
+    page-break-before: avoid;
+  }
+
+  /* Charts */
+  .charts-section { page-break-inside: avoid; }
+
+  .charts-row {
+    page-break-inside: avoid;
+    margin-bottom: 0.75rem;
+  }
+
+  .chart-card {
+    box-shadow: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 0.75rem;
+    page-break-inside: avoid;
+  }
+
+  .chart-header h3 { font-size: 0.9rem; }
+  .chart-badge { font-size: 0.65rem; }
+
+  /* Legend */
+  .chart-legend-list { gap: 0.2rem; }
+  .legend-item { font-size: 0.72rem; padding: 0.2rem 0.4rem; }
+  .legend-dot { width: 8px; height: 8px; }
+
+  /* Data tables */
+  .data-table { font-size: 0.78rem; }
+  .data-table th, .data-table td { padding: 0.3rem 0.5rem; }
+
+  /* Data stat cards */
+  .data-cards-grid { gap: 0.5rem; }
+  .data-stat-card { padding: 0.5rem; }
+  .data-stat-val { font-size: 1.3rem; }
+  .data-stat-name { font-size: 0.72rem; }
+
+  /* Footer */
+  .analytics-footer {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    page-break-before: avoid;
+    box-shadow: none;
+    border: 1px solid #e2e8f0;
+  }
+
+  .footer-val { font-size: 1.1rem; }
+  .footer-label { font-size: 0.7rem; }
+
+  /* Tooltip hidden in print */
+  .analytics-tooltip,
+  .recharts-tooltip-wrapper { display: none !important; }
+
+  /* Recharts SVG sizing */
+  .recharts-wrapper,
+  .recharts-surface {
+    max-width: 100% !important;
   }
 }

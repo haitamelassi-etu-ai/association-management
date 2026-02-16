@@ -50,6 +50,7 @@ function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [printMode, setPrintMode] = useState(false);
 
   useEffect(() => {
     const professionalUser = localStorage.getItem('professionalUser');
@@ -110,7 +111,13 @@ function AnalyticsDashboard() {
           <h1>📊 لوحة الإحصائيات والتحليلات</h1>
           <p className="header-subtitle">تحليل شامل لبيانات المستفيدين</p>
         </div>
-        <button onClick={fetchData} className="btn-refresh">🔄 تحديث</button>
+        <div className="header-actions-analytics">
+          <button onClick={() => {
+            setPrintMode(true);
+            setTimeout(() => { window.print(); setPrintMode(false); }, 600);
+          }} className="btn-print">🖨️ طباعة التقارير</button>
+          <button onClick={fetchData} className="btn-refresh">🔄 تحديث</button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -153,20 +160,23 @@ function AnalyticsDashboard() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="analytics-tabs">
-        {tabs.map(t => (
-          <button key={t.id} className={`tab-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
-            <span className="tab-icon">{t.icon}</span>
-            <span className="tab-label">{t.label}</span>
-          </button>
-        ))}
-      </div>
+      {!printMode && (
+        <div className="analytics-tabs">
+          {tabs.map(t => (
+            <button key={t.id} className={`tab-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
+              <span className="tab-icon">{t.icon}</span>
+              <span className="tab-label">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Tab Content */}
-      <div className="tab-content">
+      <div className={`tab-content ${printMode ? 'print-all' : ''}`}>
 
         {/* ===== OVERVIEW ===== */}
-        {activeTab === 'overview' && (
+        {(activeTab === 'overview' || printMode) && (
+          <>{printMode && <h2 className="print-section-title">📊 نظرة عامة</h2>}
           <div className="charts-section">
             <div className="charts-row">
               <div className="chart-card">
@@ -251,10 +261,11 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        )}
+        </>)}
 
         {/* ===== DEMOGRAPHICS ===== */}
-        {activeTab === 'demographics' && (
+        {(activeTab === 'demographics' || printMode) && (
+          <>{printMode && <h2 className="print-section-title">👥 الفئات العمرية</h2>}
           <div className="charts-section">
             <div className="charts-row">
               <div className="chart-card chart-full">
@@ -309,10 +320,11 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        )}
+        </>)}
 
         {/* ===== STATUS ===== */}
-        {activeTab === 'status' && (
+        {(activeTab === 'status' || printMode) && (
+          <>{printMode && <h2 className="print-section-title">📋 الحالة والوضعية</h2>}
           <div className="charts-section">
             <div className="charts-row">
               <div className="chart-card">
@@ -361,10 +373,11 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        )}
+        </>)}
 
         {/* ===== HEALTH ===== */}
-        {activeTab === 'health' && (
+        {(activeTab === 'health' || printMode) && (
+          <>{printMode && <h2 className="print-section-title">🏥 الصحة</h2>}
           <div className="charts-section">
             <div className="charts-row">
               <div className="chart-card chart-full">
@@ -421,10 +434,11 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        )}
+        </>)}
 
         {/* ===== GEOGRAPHY ===== */}
-        {activeTab === 'geography' && (
+        {(activeTab === 'geography' || printMode) && (
+          <>{printMode && <h2 className="print-section-title">🗺️ التوزيع الجغرافي</h2>}
           <div className="charts-section">
             <div className="charts-row">
               <div className="chart-card">
@@ -480,10 +494,11 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        )}
+        </>)}
 
         {/* ===== TIMELINE ===== */}
-        {activeTab === 'timeline' && (
+        {(activeTab === 'timeline' || printMode) && (
+          <>{printMode && <h2 className="print-section-title">📈 التطور الزمني</h2>}
           <div className="charts-section">
             <div className="charts-row">
               <div className="chart-card chart-full">
@@ -583,7 +598,7 @@ function AnalyticsDashboard() {
               </div>
             </div>
           </div>
-        )}
+        </>)}
       </div>
 
       {/* Footer summary */}
