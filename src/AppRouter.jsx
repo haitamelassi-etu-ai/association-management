@@ -30,6 +30,16 @@ import ApprovalWorkflow from './components/ApprovalWorkflow'
 import AuditLogViewer from './components/AuditLogViewer'
 import TwoFactorSetup from './components/TwoFactorSetup'
 import UserSettings from './components/UserSettings'
+import VisitorManagement from './components/VisitorManagement'
+import VolunteerPortal from './components/VolunteerPortal'
+import FinancialTracker from './components/FinancialTracker'
+import RoomManagement from './components/RoomManagement'
+import HealthRecords from './components/HealthRecords'
+import CommunicationHub from './components/CommunicationHub'
+import Integrations from './components/Integrations'
+import NotificationsCenter from './components/NotificationsCenter'
+import ExportReports from './components/ExportReports'
+import AdvancedSearch from './components/AdvancedSearch'
 
 function AppRouter() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false)
@@ -135,6 +145,16 @@ function AppRouter() {
         <Route path="/professional/audit-log" element={<AuditLogViewer />} />
         <Route path="/professional/two-factor" element={<TwoFactorSetup />} />
         <Route path="/professional/settings" element={<UserSettings />} />
+        <Route path="/professional/visitors" element={<VisitorManagement />} />
+        <Route path="/professional/volunteers" element={<VolunteerPortal />} />
+        <Route path="/professional/financial" element={<FinancialTracker />} />
+        <Route path="/professional/rooms" element={<RoomManagement />} />
+        <Route path="/professional/health-records" element={<HealthRecords />} />
+        <Route path="/professional/communications" element={<CommunicationHub />} />
+        <Route path="/professional/integrations" element={<Integrations />} />
+        <Route path="/professional/notifications" element={<NotificationsCenter />} />
+        <Route path="/professional/export-reports" element={<ExportReports />} />
+        <Route path="/professional/search" element={<AdvancedSearch />} />
       </Routes>
     </Router>
   )

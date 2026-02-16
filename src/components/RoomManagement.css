@@ -1,0 +1,78 @@
+.room-management { padding: 20px; max-width: 1400px; margin: 0 auto; }
+.room-management .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.room-management .page-header h1 { font-size: 1.6rem; color: #1a1a2e; margin: 0; }
+.header-actions { display: flex; gap: 12px; align-items: center; }
+.view-toggle { display: flex; background: #f0f0f0; border-radius: 8px; overflow: hidden; }
+.view-toggle button { padding: 8px 14px; border: none; background: transparent; cursor: pointer; font-size: 1.1rem; transition: all 0.3s; }
+.view-toggle button.active { background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.room-management .btn-primary { background: linear-gradient(135deg, #8e44ad, #9b59b6); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s; }
+.room-management .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(142,68,173,0.4); }
+.room-management .btn-secondary { background: #f0f0f0; color: #333; border: 1px solid #ddd; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+.room-management .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.room-management .stat-card { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: 12px; background: white; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.room-management .stat-card.blue { border-left: 4px solid #3498db; }
+.room-management .stat-card.green { border-left: 4px solid #27ae60; }
+.room-management .stat-card.purple { border-left: 4px solid #9b59b6; }
+.room-management .stat-card.amber { border-left: 4px solid #f39c12; }
+.room-management .stat-card.teal { border-left: 4px solid #1abc9c; }
+.room-management .stat-icon { font-size: 1.8rem; }
+.room-management .stat-info { display: flex; flex-direction: column; }
+.room-management .stat-value { font-size: 1.6rem; font-weight: 700; color: #1a1a2e; }
+.room-management .stat-label { font-size: 0.8rem; color: #666; }
+.occupancy-bar-container { background: white; padding: 16px 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.occupancy-label { font-size: 0.9rem; color: #555; margin-bottom: 8px; font-weight: 500; }
+.occupancy-bar { height: 12px; background: #eee; border-radius: 6px; overflow: hidden; }
+.occupancy-fill { height: 100%; border-radius: 6px; transition: width 0.5s ease; }
+.room-management .filters-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.room-management .filter-select { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; }
+.rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.rooms-list { display: flex; flex-direction: column; gap: 12px; }
+.rooms-list .room-card { flex-direction: row; display: flex; align-items: center; }
+.room-card { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; transition: transform 0.3s; }
+.room-card:hover { transform: translateY(-3px); }
+.room-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: flex-start; }
+.room-number h3 { margin: 0 0 4px 0; font-size: 1.1rem; color: #1a1a2e; }
+.room-type { font-size: 0.82rem; color: #888; }
+.status-tag { padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 500; white-space: nowrap; }
+.status-tag.disponible { background: #e8f5e9; color: #2e7d32; }
+.status-tag.occupee { background: #ffebee; color: #c62828; }
+.status-tag.partielle { background: #fff8e1; color: #f57f17; }
+.status-tag.maintenance { background: #e3f2fd; color: #1565c0; }
+.status-tag.hors_service { background: #f5f5f5; color: #616161; }
+.room-body { padding: 0 20px 16px; }
+.capacity-indicator { margin-bottom: 12px; }
+.capacity-indicator span { font-size: 0.85rem; color: #555; }
+.mini-bar { height: 6px; background: #eee; border-radius: 3px; margin-top: 6px; overflow: hidden; }
+.mini-fill { height: 100%; background: #9b59b6; border-radius: 3px; transition: width 0.3s; }
+.occupants-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.occupant { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #f8f9fa; border-radius: 6px; font-size: 0.85rem; }
+.btn-xs { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 0.9rem; padding: 2px 6px; }
+.equipements { display: flex; flex-wrap: wrap; gap: 4px; }
+.eq-tag { background: #e8eaf6; color: #3f51b5; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
+.room-actions { display: flex; gap: 8px; padding: 12px 20px; border-top: 1px solid #f0f0f0; }
+.room-management .btn-sm { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
+.btn-assign { background: #27ae60; color: white; }
+.btn-assign:hover { background: #219a52; }
+.btn-edit { background: #3498db; color: white; }
+.btn-edit:hover { background: #2980b9; }
+.room-management .btn-danger { background: #e74c3c; color: white; }
+.room-management .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+.room-management .modal-content { background: white; border-radius: 16px; width: 90%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.room-management .modal-content.small { max-width: 420px; }
+.room-management .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #eee; }
+.room-management .modal-header h2 { margin: 0; font-size: 1.2rem; }
+.room-management .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #999; }
+.room-management .modal-form { padding: 24px; }
+.room-management .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.room-management .form-group { margin-bottom: 16px; }
+.room-management .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #555; font-size: 0.9rem; }
+.room-management .form-group input, .room-management .form-group select, .room-management .form-group textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; }
+.room-management .form-group input:focus, .room-management .form-group select:focus { border-color: #9b59b6; outline: none; }
+.room-management .modal-actions { display: flex; justify-content: flex-end; gap: 12px; padding-top: 16px; border-top: 1px solid #eee; }
+.room-management .loading-state { text-align: center; padding: 60px; color: #666; }
+.room-management .empty-state { text-align: center; padding: 60px; color: #999; grid-column: 1 / -1; }
+@media (max-width: 768px) {
+  .room-management .form-row { grid-template-columns: 1fr; }
+  .rooms-grid { grid-template-columns: 1fr; }
+  .room-management .stats-grid { grid-template-columns: 1fr 1fr; }
+}

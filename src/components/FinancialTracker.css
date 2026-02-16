@@ -1,0 +1,74 @@
+.financial-tracker { padding: 20px; max-width: 1400px; margin: 0 auto; }
+.financial-tracker .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.financial-tracker .page-header h1 { font-size: 1.6rem; color: #1a1a2e; margin: 0; }
+.financial-tracker .btn-primary { background: linear-gradient(135deg, #2c3e50, #34495e); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s; }
+.financial-tracker .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(44,62,80,0.4); }
+.financial-tracker .btn-secondary { background: #f0f0f0; color: #333; border: 1px solid #ddd; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.kpi-card { padding: 24px; border-radius: 16px; background: white; box-shadow: 0 4px 16px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 16px; transition: transform 0.3s; }
+.kpi-card:hover { transform: translateY(-4px); }
+.kpi-card.revenue { border-left: 5px solid #27ae60; }
+.kpi-card.expense { border-left: 5px solid #e74c3c; }
+.kpi-card.balance { border-left: 5px solid #3498db; }
+.kpi-card.yearly { border-left: 5px solid #9b59b6; }
+.kpi-icon { font-size: 2.2rem; }
+.kpi-info { display: flex; flex-direction: column; }
+.kpi-label { font-size: 0.85rem; color: #888; margin-bottom: 4px; }
+.kpi-value { font-size: 1.6rem; font-weight: 700; color: #1a1a2e; }
+.financial-tracker .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: #f0f0f0; border-radius: 10px; padding: 4px; width: fit-content; }
+.financial-tracker .tab { padding: 10px 20px; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-weight: 500; color: #666; transition: all 0.3s; }
+.financial-tracker .tab.active { background: white; color: #2c3e50; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.chart-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.chart-card h3 { margin: 0 0 16px 0; color: #1a1a2e; font-size: 1.05rem; }
+.chart-card.full-width { grid-column: 1 / -1; }
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.recent-list { display: flex; flex-direction: column; gap: 10px; }
+.recent-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: 8px; background: #f8f9fa; }
+.recent-item.revenu { border-left: 3px solid #27ae60; }
+.recent-item.depense { border-left: 3px solid #e74c3c; }
+.recent-info { display: flex; flex-direction: column; }
+.recent-info strong { font-size: 0.9rem; }
+.recent-info span { font-size: 0.85rem; color: #666; }
+.recent-info small { font-size: 0.78rem; color: #999; }
+.amount { font-weight: 700; font-size: 1rem; }
+.amount.revenu { color: #27ae60; }
+.amount.depense { color: #e74c3c; }
+.financial-tracker .filters-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.financial-tracker .search-input, .financial-tracker .filter-select { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; }
+.financial-tracker .search-input { flex: 1; min-width: 250px; }
+.financial-tracker .search-input:focus, .financial-tracker .filter-select:focus { border-color: #2c3e50; outline: none; }
+.financial-tracker .table-container { overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.financial-tracker .data-table { width: 100%; border-collapse: collapse; }
+.financial-tracker .data-table thead { background: #f8f9fa; }
+.financial-tracker .data-table th { padding: 14px 16px; text-align: left; font-weight: 600; color: #555; font-size: 0.85rem; text-transform: uppercase; border-bottom: 2px solid #eee; }
+.financial-tracker .data-table td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; }
+.financial-tracker .data-table tr:hover { background: #f8f9ff; }
+.type-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; }
+.type-badge.revenu { background: #e8f5e9; color: #2e7d32; }
+.type-badge.depense { background: #ffebee; color: #c62828; }
+.amount-cell { font-weight: 600; }
+.amount-cell.revenu { color: #27ae60; }
+.amount-cell.depense { color: #e74c3c; }
+.financial-tracker .btn-sm { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+.financial-tracker .btn-danger { background: #e74c3c; color: white; }
+.financial-tracker .btn-danger:hover { background: #c0392b; }
+.financial-tracker .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+.financial-tracker .modal-content { background: white; border-radius: 16px; width: 90%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.financial-tracker .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #eee; }
+.financial-tracker .modal-header h2 { margin: 0; font-size: 1.3rem; }
+.financial-tracker .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #999; }
+.financial-tracker .modal-form { padding: 24px; }
+.financial-tracker .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.financial-tracker .form-group { margin-bottom: 16px; }
+.financial-tracker .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #555; font-size: 0.9rem; }
+.financial-tracker .form-group input, .financial-tracker .form-group select, .financial-tracker .form-group textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; }
+.financial-tracker .form-group input:focus, .financial-tracker .form-group select:focus { border-color: #2c3e50; outline: none; }
+.financial-tracker .modal-actions { display: flex; justify-content: flex-end; gap: 12px; padding-top: 16px; border-top: 1px solid #eee; }
+.financial-tracker .loading-state { text-align: center; padding: 60px; color: #666; }
+.financial-tracker .empty-state { text-align: center; padding: 40px; color: #999; }
+@media (max-width: 768px) {
+  .financial-tracker .form-row { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .overview-grid, .charts-grid { grid-template-columns: 1fr; }
+}

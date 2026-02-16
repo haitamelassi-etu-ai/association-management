@@ -27,7 +27,12 @@ const pharmacyRoutes = require('./routes/pharmacy');
 const exitLogsRoutes = require('./routes/exitLogs');
 const foodStockRoutes = require('./routes/foodStock');
 const newsRoutes = require('./routes/news');
-
+const visitorRoutes = require('./routes/visitors');
+const volunteerRoutes = require('./routes/volunteers');
+const financialRoutes = require('./routes/financial');
+const roomRoutes = require('./routes/rooms');
+const healthRecordRoutes = require('./routes/healthRecords');
+const communicationRoutes = require('./routes/communications');
 const app = express();
 const server = http.createServer(app);
 
@@ -100,6 +105,12 @@ app.use('/api/pharmacy', pharmacyRoutes);
 app.use('/api/exit-logs', exitLogsRoutes);
 app.use('/api/food-stock', foodStockRoutes);
 app.use('/api/news', newsRoutes);
+app.use('/api/visitors', visitorRoutes);
+app.use('/api/volunteers', volunteerRoutes);
+app.use('/api/financial', financialRoutes);
+app.use('/api/rooms', roomRoutes);
+app.use('/api/health-records', healthRecordRoutes);
+app.use('/api/communications', communicationRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

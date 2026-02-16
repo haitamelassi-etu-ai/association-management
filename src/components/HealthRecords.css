@@ -1,0 +1,87 @@
+.health-records { padding: 20px; max-width: 1400px; margin: 0 auto; }
+.health-records .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.health-records .page-header h1 { font-size: 1.6rem; color: #1a1a2e; margin: 0; }
+.health-records .btn-primary { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s; }
+.health-records .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(231,76,60,0.4); }
+.health-records .btn-secondary { background: #f0f0f0; color: #333; border: 1px solid #ddd; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+.health-records .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.health-records .stat-card { display: flex; align-items: center; gap: 14px; padding: 20px; border-radius: 12px; background: white; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.health-records .stat-card.blue { border-left: 4px solid #3498db; }
+.health-records .stat-card.green { border-left: 4px solid #27ae60; }
+.health-records .stat-card.red { border-left: 4px solid #e74c3c; }
+.health-records .stat-card.purple { border-left: 4px solid #9b59b6; }
+.health-records .stat-icon { font-size: 1.8rem; }
+.health-records .stat-info { display: flex; flex-direction: column; }
+.health-records .stat-value { font-size: 1.6rem; font-weight: 700; color: #1a1a2e; }
+.health-records .stat-label { font-size: 0.8rem; color: #666; }
+.health-records .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: #f0f0f0; border-radius: 10px; padding: 4px; width: fit-content; }
+.health-records .tab { padding: 10px 20px; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-weight: 500; color: #666; transition: all 0.3s; }
+.health-records .tab.active { background: white; color: #e74c3c; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.health-records .filters-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.health-records .search-input, .health-records .filter-select { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; }
+.health-records .search-input { flex: 1; min-width: 250px; }
+.health-records .search-input:focus, .health-records .filter-select:focus { border-color: #e74c3c; outline: none; }
+.records-list { display: flex; flex-direction: column; gap: 12px; }
+.record-card { display: flex; align-items: center; background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; transition: transform 0.3s; }
+.record-card:hover { transform: translateY(-2px); }
+.record-card.urgent { box-shadow: 0 2px 12px rgba(231,76,60,0.15); }
+.record-left { padding: 16px 20px; min-width: 140px; }
+.record-type { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+.record-date { font-size: 0.82rem; color: #888; }
+.record-center { flex: 1; padding: 16px 20px; }
+.record-center h4 { margin: 0 0 6px 0; color: #1a1a2e; }
+.record-center p { margin: 4px 0; font-size: 0.85rem; color: #555; }
+.diagnostic { color: #2c3e50 !important; font-weight: 500; }
+.record-right { padding: 16px 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.urgent-badge { background: #ffebee; color: #c62828; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+.record-actions { display: flex; gap: 6px; }
+.health-records .btn-sm { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
+.btn-info { background: #3498db; color: white; }
+.btn-info:hover { background: #2980b9; }
+.health-records .btn-danger { background: #e74c3c; color: white; }
+.rdv-list { display: flex; flex-direction: column; gap: 12px; }
+.rdv-card { display: flex; align-items: center; gap: 16px; background: white; padding: 16px 20px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.rdv-date { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border-radius: 10px; padding: 10px 14px; text-align: center; min-width: 60px; }
+.rdv-day { display: block; font-size: 1.5rem; font-weight: 700; }
+.rdv-month { display: block; font-size: 0.8rem; text-transform: uppercase; }
+.rdv-info h4 { margin: 0 0 4px 0; color: #1a1a2e; }
+.rdv-info p { margin: 0; color: #666; font-size: 0.85rem; }
+.stats-detail { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.stats-detail h3 { margin: 0 0 20px 0; color: #1a1a2e; }
+.type-stats { display: flex; flex-direction: column; gap: 12px; }
+.type-stat-item { display: flex; align-items: center; gap: 12px; }
+.type-name { min-width: 160px; font-size: 0.9rem; color: #555; }
+.type-bar-container { flex: 1; height: 24px; background: #f0f0f0; border-radius: 12px; overflow: hidden; }
+.type-bar { height: 100%; border-radius: 12px; transition: width 0.5s; min-width: 2px; }
+.type-count { min-width: 40px; text-align: right; font-weight: 600; color: #1a1a2e; }
+.health-records .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+.health-records .modal-content { background: white; border-radius: 16px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.health-records .modal-content.large { max-width: 700px; }
+.health-records .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #eee; }
+.health-records .modal-header h2 { margin: 0; font-size: 1.2rem; }
+.health-records .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #999; }
+.health-records .modal-form { padding: 24px; }
+.health-records .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.health-records .form-group { margin-bottom: 16px; }
+.health-records .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #555; font-size: 0.9rem; }
+.health-records .form-group input, .health-records .form-group select, .health-records .form-group textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; }
+.health-records .form-group input:focus, .health-records .form-group select:focus, .health-records .form-group textarea:focus { border-color: #e74c3c; outline: none; }
+.urgency-check { display: flex; align-items: center; padding-top: 24px; }
+.urgency-check label { display: flex !important; align-items: center; gap: 8px; cursor: pointer; }
+.urgency-check input[type="checkbox"] { width: auto !important; }
+.health-records .modal-actions { display: flex; justify-content: flex-end; gap: 12px; padding-top: 16px; border-top: 1px solid #eee; }
+.detail-content { padding: 24px; }
+.detail-row { padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+.detail-row strong { color: #555; margin-right: 8px; }
+.vitals-grid { margin: 16px 0; padding: 16px; background: #f8f9fa; border-radius: 8px; }
+.vitals-grid h4 { margin: 0 0 12px 0; color: #555; }
+.vital { padding: 4px 0; font-size: 0.9rem; }
+.health-records .loading-state { text-align: center; padding: 60px; color: #666; }
+.health-records .empty-state { text-align: center; padding: 60px; color: #999; }
+@media (max-width: 768px) {
+  .health-records .form-row, .form-row-3 { grid-template-columns: 1fr; }
+  .record-card { flex-direction: column; align-items: stretch; }
+  .record-right { flex-direction: row; justify-content: space-between; }
+}
