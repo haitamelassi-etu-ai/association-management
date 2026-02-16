@@ -590,24 +590,31 @@
 }
 
 /* ── Tab Panel visibility ── */
-/* Hidden tabs: rendered in DOM but not visible to user */
+/*
+  Hidden tabs overlap the active tab with same dimensions
+  so recharts ResponsiveContainer measures correct width/height
+  and SVGs render properly. Only opacity hides them.
+*/
+.tab-content {
+  position: relative;
+  overflow: hidden;
+}
+
 .tab-panel.tab-hidden {
   position: absolute;
-  left: -9999px;
-  width: 100%;
-  visibility: hidden;
+  top: 0;
+  left: 0;
+  right: 0;
+  opacity: 0;
   pointer-events: none;
+  z-index: -1;
 }
 
 .tab-panel.tab-active {
   position: relative;
-  left: auto;
-  visibility: visible;
+  opacity: 1;
   pointer-events: auto;
-}
-
-.tab-content {
-  position: relative;
+  z-index: 1;
 }
 
 /* Print section titles only visible in print */
@@ -647,11 +654,15 @@
   }
 
   /* Show ALL tab panels in print */
+  .tab-content {
+    overflow: visible !important;
+  }
+
   .tab-panel.tab-hidden {
     position: relative !important;
-    left: auto !important;
-    visibility: visible !important;
+    opacity: 1 !important;
     pointer-events: auto !important;
+    z-index: auto !important;
   }
 
   /* Show section titles in print */
