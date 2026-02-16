@@ -1,294 +1,608 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer, AreaChart, Area
+} from 'recharts';
 import { API_URL } from '../utils/api';
 import './AnalyticsDashboard.css';
 
-const COLORS = ['#3498db', '#e74c3c', '#f39c12', '#2ecc71', '#9b59b6', '#1abc9c'];
+const PALETTE = {
+  primary: ['#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16'],
+  maBaad: ['#06b6d4', '#f59e0b', '#22c55e', '#ef4444', '#a855f7', '#64748b'],
+  health: ['#22c55e', '#ef4444', '#f59e0b', '#a855f7', '#06b6d4', '#ec4899', '#64748b', '#0ea5e9', '#14b8a6', '#e11d48'],
+  age: ['#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#64748b'],
+  lieu: ['#0ea5e9', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'],
+};
+
+const RADIAN = Math.PI / 180;
+
+const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) => {
+  if (percent < 0.03) return null;
+  const radius = innerRadius + (outerRadius - innerRadius) * 1.15;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  return (
+    <text x={x} y={y} fill="#374151" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12} fontWeight={500}>
+      {name} ({(percent * 100).toFixed(0)}%)
+    </text>
+  );
+};
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="analytics-tooltip">
+      <p className="tooltip-label">{label || payload[0]?.name}</p>
+      {payload.map((p, i) => (
+        <p key={i} style={{ color: p.color || p.fill }}>
+          {p.name || p.dataKey}: <strong>{p.value}</strong>
+        </p>
+      ))}
+    </div>
+  );
+};
 
 function AnalyticsDashboard() {
   const navigate = useNavigate();
-  const [analytics, setAnalytics] = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedPeriod, setSelectedPeriod] = useState('6months');
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    // Check authentication
     const professionalUser = localStorage.getItem('professionalUser');
-    if (!professionalUser) {
-      navigate('/login');
-      return;
-    }
-    
-    fetchAnalytics();
+    if (!professionalUser) { navigate('/login'); return; }
+    fetchData();
   }, [navigate]);
 
-  const fetchAnalytics = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      
-      // Get token from professional user
       const professionalUser = localStorage.getItem('professionalUser');
-      if (!professionalUser) {
-        setError('Veuillez vous connecter');
-        setLoading(false);
-        return;
-      }
-      
-      const userData = JSON.parse(professionalUser);
-      const token = userData.token;
-      
-      const response = await axios.get(`${API_URL}/analytics/dashboard`, {
+      if (!professionalUser) { setError('يرجى تسجيل الدخول'); setLoading(false); return; }
+      const { token } = JSON.parse(professionalUser);
+      const res = await axios.get(`${API_URL}/analytics/beneficiaries/full`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
-      if (response.data.success) {
-        setAnalytics(response.data.data);
-      }
+      if (res.data.success) setData(res.data.data);
     } catch (err) {
       console.error('Analytics error:', err);
-      setError(err.response?.data?.message || 'Erreur de chargement');
+      setError(err.response?.data?.message || 'خطأ في تحميل البيانات');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="analytics-loading">
-        <div className="spinner"></div>
-        <p>Chargement des statistiques...</p>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="analytics-loading">
+      <div className="spinner"></div>
+      <p>جاري تحميل الإحصائيات...</p>
+    </div>
+  );
 
-  if (error) {
-    return (
-      <div className="analytics-error">
-        <p>{error}</p>
-        <button onClick={fetchAnalytics} className="btn-retry">Réessayer</button>
-      </div>
-    );
-  }
+  if (error) return (
+    <div className="analytics-error">
+      <p>{error}</p>
+      <button onClick={fetchData} className="btn-retry">إعادة المحاولة</button>
+    </div>
+  );
 
-  if (!analytics) return null;
+  if (!data) return null;
 
-  const { beneficiaries, staff } = analytics;
+  const { overview, maBaad, situation, health, lieuIntervention, entiteOrientatrice, birthPlace, age, entryTimeline, monthlyEntry, departTimeline, stayDuration, entryVsExit, cin } = data;
 
-  // Prepare data for age distribution pie chart
-  const ageData = beneficiaries.byAge.map(item => ({
-    name: item._id,
-    value: item.count
-  }));
-
-  // Prepare data for monthly trend
-  const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-  const monthlyData = beneficiaries.monthlyStats.map(stat => {
-    const [year, month] = stat.month.split('-');
-    return {
-      name: `${monthNames[parseInt(month) - 1]} ${year}`,
-      Nouveaux: stat.count
-    };
-  });
-
-  const statusData = [
-    { name: 'Actifs', value: beneficiaries.active, color: '#2ecc71' },
-    { name: 'Sortis', value: beneficiaries.exited, color: '#e74c3c' }
+  const tabs = [
+    { id: 'overview', label: 'نظرة عامة', icon: '📊' },
+    { id: 'demographics', label: 'الفئات العمرية', icon: '👥' },
+    { id: 'status', label: 'الحالة والوضعية', icon: '📋' },
+    { id: 'health', label: 'الصحة', icon: '🏥' },
+    { id: 'geography', label: 'التوزيع الجغرافي', icon: '🗺️' },
+    { id: 'timeline', label: 'التطور الزمني', icon: '📈' },
   ];
 
   return (
-    <div className="analytics-dashboard">
+    <div className="analytics-dashboard" dir="rtl">
+      {/* Header */}
       <div className="analytics-header">
-        <h1>📊 Tableau de Bord Analytique</h1>
-        <button onClick={fetchAnalytics} className="btn-refresh">
-          🔄 Actualiser
-        </button>
+        <div className="header-title">
+          <h1>📊 لوحة الإحصائيات والتحليلات</h1>
+          <p className="header-subtitle">تحليل شامل لبيانات المستفيدين</p>
+        </div>
+        <button onClick={fetchData} className="btn-refresh">🔄 تحديث</button>
       </div>
 
-      {/* Key Metrics Cards */}
-      <div className="metrics-grid">
-        <div className="metric-card blue">
-          <div className="metric-icon">👥</div>
-          <div className="metric-content">
-            <h3>Total Bénéficiaires</h3>
-            <div className="metric-value">{beneficiaries.total}</div>
-            <div className="metric-footer">
-              <span className="metric-change positive">
-                ↑ {beneficiaries.growthRate}%
-              </span>
-              <span className="metric-label">ce mois</span>
-            </div>
+      {/* KPI Cards */}
+      <div className="kpi-grid">
+        <div className="kpi-card kpi-total">
+          <div className="kpi-icon">👥</div>
+          <div className="kpi-info">
+            <span className="kpi-label">المجموع الكلي</span>
+            <span className="kpi-value">{overview.total}</span>
           </div>
         </div>
-
-        <div className="metric-card green">
-          <div className="metric-icon">✅</div>
-          <div className="metric-content">
-            <h3>Actifs</h3>
-            <div className="metric-value">{beneficiaries.active}</div>
-            <div className="metric-footer">
-              <span className="metric-label">Actuellement hébergés</span>
-            </div>
+        <div className="kpi-card kpi-heberge">
+          <div className="kpi-icon">🏠</div>
+          <div className="kpi-info">
+            <span className="kpi-label">نزلاء حاليون</span>
+            <span className="kpi-value">{overview.heberge}</span>
           </div>
         </div>
-
-        <div className="metric-card orange">
-          <div className="metric-icon">📈</div>
-          <div className="metric-content">
-            <h3>Nouveaux ce mois</h3>
-            <div className="metric-value">{beneficiaries.newThisMonth}</div>
-            <div className="metric-footer">
-              <span className="metric-label">vs {beneficiaries.newLastMonth} mois dernier</span>
-            </div>
+        <div className="kpi-card kpi-sorti">
+          <div className="kpi-icon">🚪</div>
+          <div className="kpi-info">
+            <span className="kpi-label">خرجوا</span>
+            <span className="kpi-value">{overview.sorti}</span>
           </div>
         </div>
-
-        <div className="metric-card red">
-          <div className="metric-icon">🚪</div>
-          <div className="metric-content">
-            <h3>Sortis</h3>
-            <div className="metric-value">{beneficiaries.exited}</div>
-            <div className="metric-footer">
-              <span className="metric-label">Total départs</span>
-            </div>
+        <div className="kpi-card kpi-cin">
+          <div className="kpi-icon">🪪</div>
+          <div className="kpi-info">
+            <span className="kpi-label">يحملون ب.و.ت</span>
+            <span className="kpi-value">{overview.withCIN}</span>
           </div>
         </div>
-
-        <div className="metric-card purple">
-          <div className="metric-icon">🎯</div>
-          <div className="metric-content">
-            <h3>Taux de Réussite</h3>
-            <div className="metric-value">{beneficiaries.successRate}%</div>
-            <div className="metric-footer">
-              <span className="metric-label">Réinsertions réussies</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="metric-card teal">
-          <div className="metric-icon">👔</div>
-          <div className="metric-content">
-            <h3>Personnel Actif</h3>
-            <div className="metric-value">{staff.active}/{staff.total}</div>
-            <div className="metric-footer">
-              <span className="metric-label">{staff.todayAttendance} présents aujourd'hui</span>
-            </div>
+        <div className="kpi-card kpi-stay">
+          <div className="kpi-icon">📅</div>
+          <div className="kpi-info">
+            <span className="kpi-label">متوسط الإقامة</span>
+            <span className="kpi-value">{overview.avgStayDays} <small>يوم</small></span>
           </div>
         </div>
       </div>
 
-      {/* Charts Section */}
-      <div className="charts-grid">
-        {/* Monthly Trend */}
-        <div className="chart-card full-width">
-          <div className="chart-header">
-            <h3>📈 Évolution Mensuelle des Nouveaux Bénéficiaires</h3>
-          </div>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                <XAxis dataKey="name" stroke="#666" />
-                <YAxis stroke="#666" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'rgba(255, 255, 255, 0.98)', 
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                  }} 
-                />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="Nouveaux" 
-                  stroke="#3498db" 
-                  strokeWidth={3}
-                  dot={{ fill: '#3498db', r: 5 }}
-                  activeDot={{ r: 7 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {/* Tab Navigation */}
+      <div className="analytics-tabs">
+        {tabs.map(t => (
+          <button key={t.id} className={`tab-btn ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
+            <span className="tab-icon">{t.icon}</span>
+            <span className="tab-label">{t.label}</span>
+          </button>
+        ))}
+      </div>
 
-        {/* Age Distribution */}
-        <div className="chart-card">
-          <div className="chart-header">
-            <h3>🎂 Répartition par Âge</h3>
-          </div>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={ageData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {ageData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+      {/* Tab Content */}
+      <div className="tab-content">
+
+        {/* ===== OVERVIEW ===== */}
+        {activeTab === 'overview' && (
+          <div className="charts-section">
+            <div className="charts-row">
+              <div className="chart-card">
+                <div className="chart-header">
+                  <h3>🏠 مابعد الايواء</h3>
+                  <span className="chart-badge">{maBaad.length} فئات</span>
+                </div>
+                <ResponsiveContainer width="100%" height={320}>
+                  <PieChart>
+                    <Pie data={maBaad} cx="50%" cy="50%" outerRadius={110} innerRadius={50} dataKey="value"
+                      label={renderCustomLabel} labelLine={false}>
+                      {maBaad.map((_, i) => <Cell key={i} fill={PALETTE.maBaad[i % PALETTE.maBaad.length]} />)}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="chart-legend-list">
+                  {maBaad.map((d, i) => (
+                    <div key={i} className="legend-item">
+                      <span className="legend-dot" style={{ background: PALETTE.maBaad[i % PALETTE.maBaad.length] }}></span>
+                      <span className="legend-name">{d.name}</span>
+                      <span className="legend-val">{d.value} ({d.percent}%)</span>
+                    </div>
                   ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+                </div>
+              </div>
 
-        {/* Status Distribution */}
-        <div className="chart-card">
-          <div className="chart-header">
-            <h3>📊 Statut des Bénéficiaires</h3>
-          </div>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={statusData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                <XAxis dataKey="name" stroke="#666" />
-                <YAxis stroke="#666" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'rgba(255, 255, 255, 0.98)', 
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                  }} 
-                />
-                <Bar dataKey="value" fill="#3498db">
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+              <div className="chart-card">
+                <div className="chart-header">
+                  <h3>📋 نوع الوضعية</h3>
+                  <span className="chart-badge">{situation.length} أنواع</span>
+                </div>
+                <ResponsiveContainer width="100%" height={320}>
+                  <PieChart>
+                    <Pie data={situation} cx="50%" cy="50%" outerRadius={110} innerRadius={50} dataKey="value"
+                      label={renderCustomLabel} labelLine={false}>
+                      {situation.map((_, i) => <Cell key={i} fill={PALETTE.primary[i % PALETTE.primary.length]} />)}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="chart-legend-list">
+                  {situation.map((d, i) => (
+                    <div key={i} className="legend-item">
+                      <span className="legend-dot" style={{ background: PALETTE.primary[i % PALETTE.primary.length] }}></span>
+                      <span className="legend-name">{d.name}</span>
+                      <span className="legend-val">{d.value} ({d.percent}%)</span>
+                    </div>
                   ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            <div className="charts-row">
+              <div className="chart-card chart-narrow">
+                <div className="chart-header"><h3>🪪 البطاقة الوطنية</h3></div>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie data={cin} cx="50%" cy="50%" outerRadius={90} innerRadius={40} dataKey="value"
+                      label={renderCustomLabel} labelLine={false}>
+                      <Cell fill="#22c55e" />
+                      <Cell fill="#ef4444" />
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="chart-card chart-wide">
+                <div className="chart-header"><h3>📈 الدخول مقابل الخروج حسب السنة</h3></div>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={entryVsExit} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
+                    <YAxis stroke="#6b7280" fontSize={12} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend />
+                    <Bar dataKey="entries" name="الدخول" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="exits" name="الخروج" fill="#f97316" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* ===== DEMOGRAPHICS ===== */}
+        {activeTab === 'demographics' && (
+          <div className="charts-section">
+            <div className="charts-row">
+              <div className="chart-card chart-full">
+                <div className="chart-header"><h3>🎂 التوزيع حسب الفئات العمرية</h3></div>
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={age} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="name" stroke="#6b7280" fontSize={13} />
+                    <YAxis stroke="#6b7280" fontSize={12} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="العدد" radius={[6, 6, 0, 0]}>
+                      {age.map((_, i) => <Cell key={i} fill={PALETTE.age[i % PALETTE.age.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="charts-row">
+              <div className="chart-card">
+                <div className="chart-header"><h3>📊 نسب الفئات العمرية</h3></div>
+                <ResponsiveContainer width="100%" height={320}>
+                  <PieChart>
+                    <Pie data={age} cx="50%" cy="50%" outerRadius={110} innerRadius={50} dataKey="value"
+                      label={renderCustomLabel} labelLine={false}>
+                      {age.map((_, i) => <Cell key={i} fill={PALETTE.age[i % PALETTE.age.length]} />)}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="chart-legend-list">
+                  {age.map((d, i) => (
+                    <div key={i} className="legend-item">
+                      <span className="legend-dot" style={{ background: PALETTE.age[i % PALETTE.age.length] }}></span>
+                      <span className="legend-name">{d.name}</span>
+                      <span className="legend-val">{d.value} ({d.percent}%)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="chart-card">
+                <div className="chart-header"><h3>⏱️ مدة الإقامة</h3></div>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={stayDuration} layout="vertical" margin={{ top: 10, right: 30, left: 80, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" stroke="#6b7280" fontSize={12} />
+                    <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={12} width={80} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="العدد" fill="#8b5cf6" radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== STATUS ===== */}
+        {activeTab === 'status' && (
+          <div className="charts-section">
+            <div className="charts-row">
+              <div className="chart-card">
+                <div className="chart-header"><h3>🏠 مابعد الايواء - تفصيل</h3></div>
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={maBaad} layout="vertical" margin={{ top: 10, right: 30, left: 100, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" stroke="#6b7280" fontSize={12} />
+                    <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={13} width={100} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="العدد" radius={[0, 6, 6, 0]}>
+                      {maBaad.map((_, i) => <Cell key={i} fill={PALETTE.maBaad[i % PALETTE.maBaad.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="chart-card">
+                <div className="chart-header"><h3>📋 نوع الوضعية - تفصيل</h3></div>
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={situation} layout="vertical" margin={{ top: 10, right: 30, left: 120, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" stroke="#6b7280" fontSize={12} />
+                    <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={13} width={120} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="العدد" radius={[0, 6, 6, 0]}>
+                      {situation.map((_, i) => <Cell key={i} fill={PALETTE.primary[i % PALETTE.primary.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="charts-row">
+              <div className="chart-card chart-full">
+                <div className="chart-header"><h3>📊 ملخص الحالات</h3></div>
+                <div className="data-cards-grid">
+                  {maBaad.map((d, i) => (
+                    <div key={i} className="data-stat-card" style={{ borderRightColor: PALETTE.maBaad[i % PALETTE.maBaad.length] }}>
+                      <span className="data-stat-val">{d.value}</span>
+                      <span className="data-stat-name">{d.name}</span>
+                      <span className="data-stat-pct">{d.percent}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== HEALTH ===== */}
+        {activeTab === 'health' && (
+          <div className="charts-section">
+            <div className="charts-row">
+              <div className="chart-card chart-full">
+                <div className="chart-header"><h3>🏥 توزيع الحالة الصحية</h3></div>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={health} layout="vertical" margin={{ top: 10, right: 30, left: 120, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" stroke="#6b7280" fontSize={12} />
+                    <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={13} width={120} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="العدد" radius={[0, 6, 6, 0]}>
+                      {health.map((_, i) => <Cell key={i} fill={PALETTE.health[i % PALETTE.health.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="charts-row">
+              <div className="chart-card">
+                <div className="chart-header"><h3>📊 نسب الحالة الصحية</h3></div>
+                <ResponsiveContainer width="100%" height={350}>
+                  <PieChart>
+                    <Pie data={health.slice(0, 6)} cx="50%" cy="50%" outerRadius={120} innerRadius={50} dataKey="value"
+                      label={renderCustomLabel} labelLine={false}>
+                      {health.slice(0, 6).map((_, i) => <Cell key={i} fill={PALETTE.health[i]} />)}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="chart-card">
+                <div className="chart-header"><h3>📋 جدول الحالة الصحية</h3></div>
+                <div className="data-table-wrapper">
+                  <table className="data-table">
+                    <thead>
+                      <tr><th>الحالة</th><th>العدد</th><th>النسبة</th></tr>
+                    </thead>
+                    <tbody>
+                      {health.map((d, i) => (
+                        <tr key={i}>
+                          <td>
+                            <span className="legend-dot inline" style={{ background: PALETTE.health[i % PALETTE.health.length] }}></span>
+                            {d.name}
+                          </td>
+                          <td className="num-cell">{d.value}</td>
+                          <td className="num-cell">{d.percent}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== GEOGRAPHY ===== */}
+        {activeTab === 'geography' && (
+          <div className="charts-section">
+            <div className="charts-row">
+              <div className="chart-card">
+                <div className="chart-header"><h3>🗺️ مكان التدخل</h3></div>
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={lieuIntervention} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
+                    <YAxis stroke="#6b7280" fontSize={12} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="العدد" radius={[6, 6, 0, 0]}>
+                      {lieuIntervention.map((_, i) => <Cell key={i} fill={PALETTE.lieu[i % PALETTE.lieu.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <div className="chart-legend-list">
+                  {lieuIntervention.map((d, i) => (
+                    <div key={i} className="legend-item">
+                      <span className="legend-dot" style={{ background: PALETTE.lieu[i % PALETTE.lieu.length] }}></span>
+                      <span className="legend-name">{d.name}</span>
+                      <span className="legend-val">{d.value} ({d.percent}%)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="chart-card">
+                <div className="chart-header"><h3>🏛️ الجهة الموجهة</h3></div>
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={entiteOrientatrice} layout="vertical" margin={{ top: 10, right: 30, left: 140, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" stroke="#6b7280" fontSize={12} />
+                    <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={12} width={140} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="العدد" fill="#0ea5e9" radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="charts-row">
+              <div className="chart-card chart-full">
+                <div className="chart-header"><h3>🏙️ أهم مدن الازدياد (أعلى 20)</h3></div>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={birthPlace} layout="vertical" margin={{ top: 10, right: 30, left: 120, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" stroke="#6b7280" fontSize={12} />
+                    <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={12} width={120} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="العدد" fill="#14b8a6" radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== TIMELINE ===== */}
+        {activeTab === 'timeline' && (
+          <div className="charts-section">
+            <div className="charts-row">
+              <div className="chart-card chart-full">
+                <div className="chart-header"><h3>📈 تطور الدخول حسب السنة</h3></div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={entryTimeline} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorEntry" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
+                    <YAxis stroke="#6b7280" fontSize={12} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="value" name="الدخول" stroke="#0ea5e9" strokeWidth={3}
+                      fill="url(#colorEntry)" dot={{ fill: '#0ea5e9', r: 4 }} activeDot={{ r: 6 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="charts-row">
+              <div className="chart-card chart-full">
+                <div className="chart-header"><h3>📊 الدخول مقابل الخروج حسب السنة</h3></div>
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={entryVsExit} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="name" stroke="#6b7280" fontSize={13} />
+                    <YAxis stroke="#6b7280" fontSize={12} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend />
+                    <Bar dataKey="entries" name="الدخول" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="exits" name="الخروج" fill="#f97316" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {monthlyEntry.length > 0 && (
+              <div className="charts-row">
+                <div className="chart-card chart-full">
+                  <div className="chart-header"><h3>📅 الدخول الشهري (آخر سنتين)</h3></div>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={monthlyEntry} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorMonthly" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="#22c55e" stopOpacity={0.05} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="name" stroke="#6b7280" fontSize={11} angle={-25} textAnchor="end" height={60} />
+                      <YAxis stroke="#6b7280" fontSize={12} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Area type="monotone" dataKey="value" name="الدخول" stroke="#22c55e" strokeWidth={2}
+                        fill="url(#colorMonthly)" dot={{ fill: '#22c55e', r: 3 }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
+            <div className="charts-row">
+              <div className="chart-card">
+                <div className="chart-header"><h3>🚪 تطور الخروج حسب السنة</h3></div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={departTimeline} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorDepart" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#f97316" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
+                    <YAxis stroke="#6b7280" fontSize={12} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="value" name="الخروج" stroke="#f97316" strokeWidth={2}
+                      fill="url(#colorDepart)" dot={{ fill: '#f97316', r: 4 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="chart-card">
+                <div className="chart-header"><h3>⏱️ مدة الإقامة</h3></div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={stayDuration} layout="vertical" margin={{ top: 10, right: 30, left: 80, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" stroke="#6b7280" fontSize={12} />
+                    <YAxis type="category" dataKey="name" stroke="#6b7280" fontSize={12} width={80} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="value" name="العدد" fill="#8b5cf6" radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Quick Stats Footer */}
-      <div className="quick-stats">
-        <div className="stat-item">
-          <span className="stat-label">Capacité d'accueil:</span>
-          <span className="stat-value">{((beneficiaries.active / 50) * 100).toFixed(0)}%</span>
+      {/* Footer summary */}
+      <div className="analytics-footer">
+        <div className="footer-stat">
+          <span className="footer-label">المجموع</span>
+          <span className="footer-val">{overview.total}</span>
         </div>
-        <div className="stat-item">
-          <span className="stat-label">Moyenne nouveaux/mois:</span>
-          <span className="stat-value">
-            {(beneficiaries.monthlyStats.reduce((sum, m) => sum + m.count, 0) / beneficiaries.monthlyStats.length).toFixed(1)}
-          </span>
+        <div className="footer-stat">
+          <span className="footer-label">نزلاء</span>
+          <span className="footer-val">{overview.heberge}</span>
         </div>
-        <div className="stat-item">
-          <span className="stat-label">Croissance:</span>
-          <span className={`stat-value ${beneficiaries.growthRate >= 0 ? 'positive' : 'negative'}`}>
-            {beneficiaries.growthRate >= 0 ? '+' : ''}{beneficiaries.growthRate}%
-          </span>
+        <div className="footer-stat">
+          <span className="footer-label">خرجوا</span>
+          <span className="footer-val">{overview.sorti}</span>
+        </div>
+        <div className="footer-stat">
+          <span className="footer-label">متوسط الإقامة</span>
+          <span className="footer-val">{overview.avgStayDays} يوم</span>
         </div>
       </div>
     </div>
