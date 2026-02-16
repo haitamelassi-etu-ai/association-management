@@ -10,6 +10,8 @@ router.post('/', protect, foodStockController.createStockItem);
 // Routes des alertes et statistiques
 router.get('/alerts/all', protect, foodStockController.getAlerts);
 router.get('/stats/overview', protect, foodStockController.getStatistics);
+router.get('/stats/charts', protect, foodStockController.getChartData);
+router.get('/stats/expiration-calendar', protect, foodStockController.getExpirationCalendar);
 
 // Routes pour un article spécifique
 router.get('/:id', protect, foodStockController.getStockItem);
@@ -18,5 +20,6 @@ router.delete('/:id', protect, foodStockController.deleteStockItem);
 router.post('/:id/consommer', protect, foodStockController.consommerStock);
 router.post('/:id/adjust', protect, foodStockController.adjustStock);
 router.get('/:id/plan', protect, foodStockController.getPlanConsommation);
+router.get('/:id/history', protect, foodStockController.getItemHistory);
 
 module.exports = router;

@@ -333,6 +333,93 @@ exports.getStatistics = async (req, res) => {
   }
 };
 
+// Obtenir l'historique d'un article
+exports.getItemHistory = async (req, res) => {
+  try {
+    const item = await FoodStock.findById(req.params.id)
+      .populate('historique.utilisateur', 'name email')
+      .select('nom historique');
+    if (!item) {
+      return res.status(404).json({ message: 'Article non trouvé' });
+    }
+    const sorted = (item.historique || []).sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json({ nom: item.nom, historique: sorted });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur', error: error.message });
+  }
+};
+
+// Données pour les graphiques
+exports.getChartData = async (req, res) => {
+  try {
+    // 1. Stock par catégorie (pie chart)
+    const parCategorie = await FoodStock.aggregate([
+      { $group: { _id: '$categorie', count: { $sum: 1 }, valeur: { $sum: { $multiply: ['$quantite', '$prix'] } }, quantiteTotale: { $sum: '$quantite' } } }
+    ]);
+
+    // 2. Stock par statut (pie chart)
+    const parStatut = await FoodStock.aggregate([
+      { $group: { _id: '$statut', count: { $sum: 1 } } }
+    ]);
+
+    // 3. Top 10 articles par valeur (bar chart)
+    const topArticles = await FoodStock.find()
+      .sort({ quantite: -1 })
+      .limit(10)
+      .select('nom quantite unite prix categorie');
+
+    // 4. Valeur par catégorie (bar chart)
+    const valeurParCategorie = await FoodStock.aggregate([
+      { $group: { _id: '$categorie', valeur: { $sum: { $multiply: ['$quantite', '$prix'] } } } },
+      { $sort: { valeur: -1 } }
+    ]);
+
+    // 5. Achats par mois (line chart) - basé sur dateAchat
+    const achatsParMois = await FoodStock.aggregate([
+      { $group: {
+        _id: { year: { $year: '$dateAchat' }, month: { $month: '$dateAchat' } },
+        count: { $sum: 1 },
+        valeur: { $sum: { $multiply: ['$quantite', '$prix'] } }
+      }},
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
+      { $limit: 12 }
+    ]);
+
+    res.json({
+      parCategorie,
+      parStatut,
+      topArticles,
+      valeurParCategorie,
+      achatsParMois
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur', error: error.message });
+  }
+};
+
+// Données pour le calendrier d'expiration
+exports.getExpirationCalendar = async (req, res) => {
+  try {
+    const items = await FoodStock.find({
+      dateExpiration: { $exists: true }
+    })
+    .select('nom categorie quantite unite dateExpiration statut')
+    .sort({ dateExpiration: 1 });
+
+    // Grouper par date
+    const grouped = {};
+    items.forEach(item => {
+      const dateKey = new Date(item.dateExpiration).toISOString().split('T')[0];
+      if (!grouped[dateKey]) grouped[dateKey] = [];
+      grouped[dateKey].push(item);
+    });
+
+    res.json({ items, grouped });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur', error: error.message });
+  }
+};
+
 // Obtenir le plan de consommation recommandé
 exports.getPlanConsommation = async (req, res) => {
   try {

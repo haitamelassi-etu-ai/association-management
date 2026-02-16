@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { API_URL } from '../utils/api';
 import './FoodStockManagement.css';
 import ProfessionalLayout from '../professional/ProfessionalLayout';
@@ -48,6 +49,14 @@ const FoodStockManagement = () => {
   // Ajustement stock
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustData, setAdjustData] = useState({ quantite: 0, type: 'add', raison: '' });
+
+  // Tabs & Analytics
+  const [activeTab, setActiveTab] = useState('stock');
+  const [chartData, setChartData] = useState(null);
+  const [calendarData, setCalendarData] = useState(null);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyData, setHistoryData] = useState({ nom: '', historique: [] });
 
   const categories = [
     { value: 'fruits-legumes', label: '🍎 Fruits & Légumes', icon: '🥗' },
@@ -441,6 +450,85 @@ const FoodStockManagement = () => {
     }
   };
 
+  // Charger les données des graphiques
+  const fetchChartData = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/food-stock/stats/charts`, getAuthHeaders());
+      setChartData(res.data);
+    } catch (error) {
+      console.error('Erreur chargement charts:', error);
+    }
+  };
+
+  // Charger le calendrier d'expiration
+  const fetchCalendarData = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/food-stock/stats/expiration-calendar`, getAuthHeaders());
+      setCalendarData(res.data);
+    } catch (error) {
+      console.error('Erreur chargement calendrier:', error);
+    }
+  };
+
+  // Charger l'historique d'un article
+  const fetchItemHistory = async (item) => {
+    try {
+      const res = await axios.get(`${API_URL}/food-stock/${item._id}/history`, getAuthHeaders());
+      setHistoryData(res.data);
+      setShowHistoryModal(true);
+    } catch (error) {
+      console.error('Erreur chargement historique:', error);
+    }
+  };
+
+  // Charger données quand on change de tab
+  useEffect(() => {
+    if (activeTab === 'charts' && !chartData) fetchChartData();
+    if (activeTab === 'calendar' && !calendarData) fetchCalendarData();
+  }, [activeTab]);
+
+  // Helper pour les couleurs des graphiques
+  const CHART_COLORS = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b'];
+  const STATUS_COLORS = { disponible: '#43e97b', faible: '#f5a623', critique: '#f5576c', expire: '#1f2937' };
+
+  const categoryLabels = {
+    'fruits-legumes': '🍎 Fruits & Légumes',
+    'viandes-poissons': '🥩 Viandes & Poissons',
+    'produits-laitiers': '🥛 Produits Laitiers',
+    'cereales-pains': '🍞 Céréales & Pains',
+    'conserves': '🥫 Conserves',
+    'boissons': '🥤 Boissons',
+    'autres': '📦 Autres'
+  };
+
+  const monthNames = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+  // Calendar helpers
+  const getCalendarDays = () => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days = [];
+    // Adjust for Monday start (0=Mon,6=Sun)
+    const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+    for (let i = 0; i < startOffset; i++) days.push(null);
+    for (let d = 1; d <= daysInMonth; d++) days.push(d);
+    return days;
+  };
+
+  const getItemsForDay = (day) => {
+    if (!day || !calendarData?.grouped) return [];
+    const year = calendarMonth.getFullYear();
+    const month = String(calendarMonth.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const key = `${year}-${month}-${dayStr}`;
+    return calendarData.grouped[key] || [];
+  };
+
+  const prevMonth = () => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1));
+  const nextMonth = () => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1));
+
   // Ajouter un article
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -699,6 +787,25 @@ const FoodStockManagement = () => {
         </div>
       )}
 
+      {/* Tab Navigation */}
+      <div className="stock-tabs">
+        <button className={`tab-btn ${activeTab === 'stock' ? 'active' : ''}`} onClick={() => setActiveTab('stock')}>
+          📋 Stock
+        </button>
+        <button className={`tab-btn ${activeTab === 'charts' ? 'active' : ''}`} onClick={() => setActiveTab('charts')}>
+          📊 Graphiques
+        </button>
+        <button className={`tab-btn ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>
+          📅 Calendrier
+        </button>
+      </div>
+
+      {/* ═══════════════════════════════════════ */}
+      {/* TAB: Stock (existing content)          */}
+      {/* ═══════════════════════════════════════ */}
+      {activeTab === 'stock' && (
+      <>
+
       {/* Filtres */}
       <div className="filters-bar">
         <select
@@ -815,6 +922,13 @@ const FoodStockManagement = () => {
                       >
                         🗑️
                       </button>
+                      <button 
+                        className="btn-action history"
+                        onClick={() => fetchItemHistory(item)}
+                        title="Historique"
+                      >
+                        📜
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -856,6 +970,264 @@ const FoodStockManagement = () => {
                 {(statistics.statuts || []).find(s => s._id === 'disponible')?.count || 0}
               </span>
               <span className="summary-label">🟢 Disponibles</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      </>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* TAB: Graphiques & Analytics            */}
+      {/* ═══════════════════════════════════════ */}
+      {activeTab === 'charts' && (
+        <div className="charts-container">
+          {!chartData ? (
+            <div className="loading-spinner" style={{minHeight:'200px',color:'#333'}}>Chargement des graphiques...</div>
+          ) : (
+            <>
+              {/* Row 1: Pie Charts */}
+              <div className="charts-row">
+                <div className="chart-card">
+                  <h3>🥧 Répartition par Catégorie</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={(chartData.parCategorie || []).map(c => ({
+                          name: categoryLabels[c._id] || c._id,
+                          value: c.count
+                        }))}
+                        cx="50%" cy="50%" outerRadius={100}
+                        fill="#667eea" dataKey="value" label={({ name, value }) => `${value}`}
+                      >
+                        {(chartData.parCategorie || []).map((_, i) => (
+                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="chart-card">
+                  <h3>🔴 Répartition par Statut</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={(chartData.parStatut || []).map(s => ({
+                          name: s._id === 'disponible' ? '✓ Disponible' : s._id === 'faible' ? '⚠ Faible' : s._id === 'critique' ? '⚠ Critique' : '✗ Expiré',
+                          value: s.count
+                        }))}
+                        cx="50%" cy="50%" outerRadius={100}
+                        fill="#43e97b" dataKey="value" label={({ name, value }) => `${value}`}
+                      >
+                        {(chartData.parStatut || []).map((s, i) => (
+                          <Cell key={i} fill={STATUS_COLORS[s._id] || '#ccc'} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Row 2: Bar chart — Valeur par catégorie */}
+              <div className="chart-card full-width">
+                <h3>💰 Valeur du Stock par Catégorie (DH)</h3>
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={(chartData.valeurParCategorie || []).map(c => ({
+                    nom: (categoryLabels[c._id] || c._id).replace(/^.{2}/, ''),
+                    valeur: Math.round(c.valeur)
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="nom" tick={{ fontSize: 12 }} angle={-20} textAnchor="end" height={80} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip formatter={(v) => `${v} DH`} />
+                    <Bar dataKey="valeur" fill="#667eea" radius={[8, 8, 0, 0]}>
+                      {(chartData.valeurParCategorie || []).map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Row 3: Top 10 articles + Line chart */}
+              <div className="charts-row">
+                <div className="chart-card">
+                  <h3>🏆 Top 10 Articles (Quantité)</h3>
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={(chartData.topArticles || []).map(a => ({
+                      nom: a.nom.length > 15 ? a.nom.substring(0, 15) + '…' : a.nom,
+                      quantite: a.quantite
+                    }))} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" tick={{ fontSize: 12 }} />
+                      <YAxis dataKey="nom" type="category" width={130} tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Bar dataKey="quantite" fill="#764ba2" radius={[0, 8, 8, 0]}>
+                        {(chartData.topArticles || []).map((_, i) => (
+                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="chart-card">
+                  <h3>📈 Achats par Mois</h3>
+                  <ResponsiveContainer width="100%" height={350}>
+                    <LineChart data={(chartData.achatsParMois || []).map(m => ({
+                      mois: monthNames[(m._id.month || 1) - 1]?.substring(0, 3) || '?',
+                      articles: m.count,
+                      valeur: Math.round(m.valeur)
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="mois" tick={{ fontSize: 12 }} />
+                      <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
+                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Line yAxisId="left" type="monotone" dataKey="articles" stroke="#667eea" strokeWidth={3} dot={{ r: 5 }} name="Articles" />
+                      <Line yAxisId="right" type="monotone" dataKey="valeur" stroke="#f5576c" strokeWidth={3} dot={{ r: 5 }} name="Valeur (DH)" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* TAB: Calendrier d'Expiration           */}
+      {/* ═══════════════════════════════════════ */}
+      {activeTab === 'calendar' && (
+        <div className="calendar-container">
+          {!calendarData ? (
+            <div className="loading-spinner" style={{minHeight:'200px',color:'#333'}}>Chargement du calendrier...</div>
+          ) : (
+            <>
+              <div className="calendar-header-nav">
+                <button className="cal-nav-btn" onClick={prevMonth}>◀</button>
+                <h3>{monthNames[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}</h3>
+                <button className="cal-nav-btn" onClick={nextMonth}>▶</button>
+              </div>
+
+              <div className="calendar-grid">
+                {['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d => (
+                  <div key={d} className="calendar-day-header">{d}</div>
+                ))}
+                {getCalendarDays().map((day, idx) => {
+                  const items = getItemsForDay(day);
+                  const today = new Date();
+                  const isToday = day && calendarMonth.getMonth() === today.getMonth() && calendarMonth.getFullYear() === today.getFullYear() && day === today.getDate();
+                  const hasExpired = items.some(i => {
+                    const d = Math.ceil((new Date(i.dateExpiration) - new Date()) / 86400000);
+                    return d <= 0;
+                  });
+                  const hasWarning = items.some(i => {
+                    const d = Math.ceil((new Date(i.dateExpiration) - new Date()) / 86400000);
+                    return d > 0 && d <= 7;
+                  });
+                  return (
+                    <div key={idx} className={`calendar-day ${!day ? 'empty' : ''} ${isToday ? 'today' : ''} ${items.length > 0 ? 'has-items' : ''} ${hasExpired ? 'has-expired' : ''} ${hasWarning ? 'has-warning' : ''}`}>
+                      {day && <span className="day-number">{day}</span>}
+                      {items.length > 0 && (
+                        <div className="day-items">
+                          {items.slice(0, 3).map((item, i) => (
+                            <div key={i} className={`day-item ${item.statut}`} title={`${item.nom} - ${item.quantite} ${item.unite}`}>
+                              {item.nom.length > 10 ? item.nom.substring(0, 10) + '…' : item.nom}
+                            </div>
+                          ))}
+                          {items.length > 3 && (
+                            <div className="day-item more">+{items.length - 3} de plus</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Upcoming expirations list */}
+              <div className="expiration-list">
+                <h3>⏰ Prochaines Expirations</h3>
+                <div className="exp-items">
+                  {(calendarData.items || [])
+                    .filter(i => Math.ceil((new Date(i.dateExpiration) - new Date()) / 86400000) > 0)
+                    .slice(0, 20)
+                    .map((item, idx) => {
+                      const days = Math.ceil((new Date(item.dateExpiration) - new Date()) / 86400000);
+                      return (
+                        <div key={idx} className={`exp-item ${days <= 3 ? 'urgent' : days <= 7 ? 'warning' : days <= 30 ? 'soon' : ''}`}>
+                          <div className="exp-info">
+                            <strong>{item.nom}</strong>
+                            <span className="exp-qty">{item.quantite} {item.unite}</span>
+                          </div>
+                          <div className="exp-date">
+                            <span className="exp-days">{days}j</span>
+                            <span className="exp-full-date">{new Date(item.dateExpiration).toLocaleDateString('fr-FR')}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Modal Historique */}
+      {showHistoryModal && (
+        <div className="modal-overlay" onClick={() => setShowHistoryModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>📜 Historique — {historyData.nom}</h2>
+              <button className="modal-close" onClick={() => setShowHistoryModal(false)}>✕</button>
+            </div>
+            <div className="history-content">
+              {historyData.historique.length === 0 ? (
+                <div className="empty-state"><p>Aucun historique</p></div>
+              ) : (
+                <div className="history-timeline">
+                  {historyData.historique.map((h, idx) => {
+                    const actionLabels = {
+                      ajout: { icon: '➕', label: 'Ajouté', color: '#43e97b' },
+                      consommation: { icon: '🍽️', label: 'Consommé', color: '#f5576c' },
+                      modification: { icon: '✏️', label: 'Modifié', color: '#f5a623' },
+                      reapprovisionnement: { icon: '📦', label: 'Réapprovisionné', color: '#667eea' }
+                    };
+                    const info = actionLabels[h.action] || { icon: '📌', label: h.action, color: '#999' };
+                    return (
+                      <div key={idx} className="history-item">
+                        <div className="history-dot" style={{ background: info.color }}></div>
+                        <div className="history-line"></div>
+                        <div className="history-card">
+                          <div className="history-top">
+                            <span className="history-action" style={{ color: info.color }}>
+                              {info.icon} {info.label}
+                            </span>
+                            <span className="history-date">
+                              {new Date(h.date).toLocaleDateString('fr-FR')} {new Date(h.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className="history-details">
+                            <span>Quantité : <strong>{h.quantite}</strong></span>
+                            <span>Restant : <strong>{h.quantiteRestante}</strong></span>
+                          </div>
+                          {h.notes && <div className="history-notes">💬 {h.notes}</div>}
+                          {h.utilisateur && <div className="history-user">👤 {h.utilisateur.name || h.utilisateur.email}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
