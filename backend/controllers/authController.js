@@ -52,7 +52,8 @@ exports.register = async (req, res) => {
 // @access  Public
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = (req.body?.email || '').trim().toLowerCase();
+    const { password } = req.body;
     console.log('🔐 Login attempt:', { email, passwordProvided: !!password });
 
     // Validate input
@@ -85,7 +86,23 @@ exports.login = async (req, res) => {
     }
 
     // Check password
-    const isMatch = await user.comparePassword(password);
+    const passwordHashRegex = /^\$2[aby]\$\d{2}\$/;
+    const storedPassword = user.password || '';
+    const isStoredPasswordHashed = passwordHashRegex.test(storedPassword);
+
+    let isMatch = false;
+
+    if (isStoredPasswordHashed) {
+      isMatch = await user.comparePassword(password);
+    } else {
+      isMatch = storedPassword === password;
+
+      if (isMatch) {
+        user.password = password;
+        await user.save();
+      }
+    }
+
     console.log('🔑 Password match:', isMatch);
     if (!isMatch) {
       console.log('❌ Invalid password for user:', email);
