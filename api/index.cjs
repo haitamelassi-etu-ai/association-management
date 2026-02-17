@@ -27,6 +27,7 @@ const financialRoutes = require('../backend/routes/financial');
 const roomRoutes = require('../backend/routes/rooms');
 const healthRecordRoutes = require('../backend/routes/healthRecords');
 const communicationRoutes = require('../backend/routes/communications');
+const aiRoutes = require('../backend/routes/ai');
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use('/api/financial', financialRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/health-records', healthRecordRoutes);
 app.use('/api/communications', communicationRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

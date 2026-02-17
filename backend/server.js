@@ -33,6 +33,7 @@ const financialRoutes = require('./routes/financial');
 const roomRoutes = require('./routes/rooms');
 const healthRecordRoutes = require('./routes/healthRecords');
 const communicationRoutes = require('./routes/communications');
+const aiRoutes = require('./routes/ai');
 const app = express();
 const server = http.createServer(app);
 
@@ -111,6 +112,7 @@ app.use('/api/financial', financialRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/health-records', healthRecordRoutes);
 app.use('/api/communications', communicationRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

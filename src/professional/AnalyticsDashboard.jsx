@@ -5,6 +5,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, AreaChart, Area
 } from 'recharts';
+import { jsPDF } from 'jspdf';
 import { API_URL } from '../utils/api';
 import './AnalyticsDashboard.css';
 
@@ -52,9 +53,109 @@ function AnalyticsDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [printMode, setPrintMode] = useState(false);
   const printRef = useRef(null);
+  const [aiReport, setAiReport] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
 
   const handlePrint = () => {
     setPrintMode(true);
+  };
+
+  // ── AI Monthly Report ──
+  const handleGenerateAIReport = async () => {
+    try {
+      setAiLoading(true);
+      setShowAiModal(true);
+      setAiReport('');
+      const professionalUser = localStorage.getItem('professionalUser');
+      if (!professionalUser) return;
+      const { token } = JSON.parse(professionalUser);
+
+      const payload = {
+        totalBeneficiaries: overview?.total || 0,
+        activeBeneficiaries: overview?.heberge || 0,
+        totalMeals: 0,
+        hygieneDistributions: 0,
+        stockAlerts: [],
+        occupancyRate: overview?.total ? Math.round((overview.heberge / overview.total) * 100) : 0,
+        donationsReceived: 0,
+      };
+
+      // Try to fetch extra data silently
+      try {
+        const [mealsRes, stockRes, roomsRes, finRes] = await Promise.allSettled([
+          axios.get(`${API_URL}/meals/stats`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_URL}/food-stock`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_URL}/rooms/stats`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_URL}/financial/stats`, { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+        if (mealsRes.status === 'fulfilled' && mealsRes.value.data?.data) {
+          payload.totalMeals = mealsRes.value.data.data.totalToday || mealsRes.value.data.data.total || 0;
+        }
+        if (stockRes.status === 'fulfilled' && stockRes.value.data?.data) {
+          const items = stockRes.value.data.data;
+          if (Array.isArray(items)) {
+            payload.stockAlerts = items.filter(i => i.quantite <= (i.seuilAlerte || 10)).map(i => i.nom || i.name);
+          }
+        }
+        if (roomsRes.status === 'fulfilled' && roomsRes.value.data?.data) {
+          payload.occupancyRate = roomsRes.value.data.data.occupancyRate || payload.occupancyRate;
+        }
+        if (finRes.status === 'fulfilled' && finRes.value.data?.data) {
+          payload.donationsReceived = finRes.value.data.data.monthlyRevenue || finRes.value.data.data.totalRevenu || 0;
+        }
+      } catch (_) { /* silent */ }
+
+      const res = await axios.post(`${API_URL}/ai/monthly-report`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data.success) {
+        setAiReport(res.data.data.report);
+      } else {
+        setAiReport('❌ ' + (res.data.message || 'Erreur'));
+      }
+    } catch (err) {
+      console.error('AI report error:', err);
+      setAiReport('❌ ' + (err.response?.data?.message || err.message || 'Erreur de génération'));
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleExportAIPdf = () => {
+    if (!aiReport) return;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const margin = 15;
+    const pageWidth = doc.internal.pageSize.getWidth() - margin * 2;
+    let y = 20;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('Rapport Mensuel – Association Deuxième Chance', margin, y);
+    y += 10;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} par IA (GPT-4o)`, margin, y);
+    y += 10;
+    doc.setDrawColor(200);
+    doc.line(margin, y, margin + pageWidth, y);
+    y += 8;
+
+    doc.setFontSize(11);
+    const lines = doc.splitTextToSize(aiReport, pageWidth);
+    for (const line of lines) {
+      if (y > 275) { doc.addPage(); y = 20; }
+      // Bold section headings
+      if (/^\d+\.\s|^\*\*/.test(line.trim())) {
+        doc.setFont('helvetica', 'bold');
+      } else {
+        doc.setFont('helvetica', 'normal');
+      }
+      doc.text(line, margin, y);
+      y += 6;
+    }
+
+    doc.save(`rapport-mensuel-${new Date().toISOString().slice(0, 7)}.pdf`);
   };
 
   // When printMode activates: wait for all recharts SVGs to render, then print
@@ -163,6 +264,7 @@ function AnalyticsDashboard() {
           <p className="header-subtitle">تحليل شامل لبيانات المستفيدين</p>
         </div>
         <div className="header-actions-analytics">
+          <button onClick={handleGenerateAIReport} className="btn-ai-report">🤖 Rapport IA Mensuel</button>
           <button onClick={handlePrint} className="btn-print">🖨️ طباعة التقارير</button>
           <button onClick={fetchData} className="btn-refresh">🔄 تحديث</button>
         </div>
@@ -674,6 +776,44 @@ function AnalyticsDashboard() {
           <span className="footer-val">{overview.avgStayDays} يوم</span>
         </div>
       </div>
+
+      {/* AI Report Modal */}
+      {showAiModal && (
+        <div className="ai-modal-overlay" onClick={() => !aiLoading && setShowAiModal(false)}>
+          <div className="ai-modal" onClick={e => e.stopPropagation()} dir="ltr">
+            <div className="ai-modal-header">
+              <h2>🤖 Rapport Mensuel IA</h2>
+              <button className="ai-modal-close" onClick={() => !aiLoading && setShowAiModal(false)}>✕</button>
+            </div>
+            <div className="ai-modal-body">
+              {aiLoading ? (
+                <div className="ai-loading">
+                  <div className="ai-spinner"></div>
+                  <p>Génération du rapport en cours via GPT-4o...</p>
+                  <p className="ai-loading-sub">Cela peut prendre 10-20 secondes</p>
+                </div>
+              ) : (
+                <div className="ai-report-content">
+                  {aiReport.split('\n').map((line, i) => {
+                    if (/^#{1,3}\s/.test(line)) return <h3 key={i}>{line.replace(/^#+\s/, '')}</h3>;
+                    if (/^\*\*.*\*\*$/.test(line.trim())) return <h4 key={i}>{line.replace(/\*\*/g, '')}</h4>;
+                    if (/^\d+\.\s\*\*/.test(line)) return <h4 key={i}>{line.replace(/\*\*/g, '')}</h4>;
+                    if (line.trim() === '') return <br key={i} />;
+                    if (/^[-•]\s/.test(line.trim())) return <li key={i}>{line.replace(/^[-•]\s/, '')}</li>;
+                    return <p key={i}>{line}</p>;
+                  })}
+                </div>
+              )}
+            </div>
+            {!aiLoading && aiReport && !aiReport.startsWith('❌') && (
+              <div className="ai-modal-footer">
+                <button onClick={handleExportAIPdf} className="btn-ai-pdf">📄 Exporter PDF</button>
+                <button onClick={() => { navigator.clipboard.writeText(aiReport); }} className="btn-ai-copy">📋 Copier</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
