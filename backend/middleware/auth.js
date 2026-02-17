@@ -1,6 +1,9 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const getJwtSecret = () =>
+  (process.env.JWT_SECRET || process.env.JWT_KEY || process.env.TOKEN_SECRET || '').trim();
+
 // Protect routes
 exports.protect = async (req, res, next) => {
   let token;
@@ -17,7 +20,15 @@ exports.protect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const secret = getJwtSecret();
+    if (!secret) {
+      return res.status(500).json({
+        success: false,
+        message: 'Configuration JWT manquante'
+      });
+    }
+
+    const decoded = jwt.verify(token, secret);
     req.user = await User.findById(decoded.id).select('-password');
     
     if (!req.user || !req.user.isActive) {

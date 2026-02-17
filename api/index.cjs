@@ -2,6 +2,9 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+try {
+  require('dotenv').config();
+} catch (_) {}
 
 // Routes (backend is CommonJS)
 const authRoutes = require('../backend/routes/auth');
@@ -56,13 +59,24 @@ app.get('/api/health', (req, res) => {
 });
 
 let connectingPromise;
+
+function getMongoUri() {
+  return (
+    process.env.MONGODB_URI ||
+    process.env.MONGO_URI ||
+    process.env.MONGODB_URL ||
+    process.env.DATABASE_URL ||
+    ''
+  ).trim();
+}
+
 async function ensureMongo() {
   if (mongoose.connection.readyState === 1) return;
   if (connectingPromise) return connectingPromise;
 
-  const uri = process.env.MONGODB_URI;
+  const uri = getMongoUri();
   if (!uri) {
-    throw new Error('MONGODB_URI is not set');
+    throw new Error('MongoDB URI is not set (expected one of: MONGODB_URI, MONGO_URI, MONGODB_URL, DATABASE_URL)');
   }
 
   connectingPromise = mongoose
