@@ -2,9 +2,6 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-try {
-  require('dotenv').config();
-} catch (_) {}
 
 // Routes (backend is CommonJS)
 const authRoutes = require('../backend/routes/auth');
@@ -24,6 +21,12 @@ const analyticsRoutes = require('../backend/routes/analytics');
 const advancedReportsRoutes = require('../backend/routes/advancedReports');
 const backupRoutes = require('../backend/routes/backup');
 const newsRoutes = require('../backend/routes/news');
+const visitorRoutes = require('../backend/routes/visitors');
+const volunteerRoutes = require('../backend/routes/volunteers');
+const financialRoutes = require('../backend/routes/financial');
+const roomRoutes = require('../backend/routes/rooms');
+const healthRecordRoutes = require('../backend/routes/healthRecords');
+const communicationRoutes = require('../backend/routes/communications');
 
 const app = express();
 
@@ -49,34 +52,40 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reports/advanced', advancedReportsRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/news', newsRoutes);
+app.use('/api/visitors', visitorRoutes);
+app.use('/api/volunteers', volunteerRoutes);
+app.use('/api/financial', financialRoutes);
+app.use('/api/rooms', roomRoutes);
+app.use('/api/health-records', healthRecordRoutes);
+app.use('/api/communications', communicationRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     mongoReadyState: mongoose.connection.readyState,
     time: new Date().toISOString(),
+    env: {
+      hasMongo: !!process.env.MONGODB_URI,
+      hasJwt: !!process.env.JWT_SECRET,
+      nodeEnv: process.env.NODE_ENV || 'not-set',
+    },
   });
 });
 
+// Global error handler
+app.use((err, req, res, _next) => {
+  console.error('Express error:', err);
+  res.status(500).json({ success: false, message: err?.message || 'Server error' });
+});
+
 let connectingPromise;
-
-function getMongoUri() {
-  return (
-    process.env.MONGODB_URI ||
-    process.env.MONGO_URI ||
-    process.env.MONGODB_URL ||
-    process.env.DATABASE_URL ||
-    ''
-  ).trim();
-}
-
 async function ensureMongo() {
   if (mongoose.connection.readyState === 1) return;
   if (connectingPromise) return connectingPromise;
 
-  const uri = getMongoUri();
+  const uri = process.env.MONGODB_URI;
   if (!uri) {
-    throw new Error('MongoDB URI is not set (expected one of: MONGODB_URI, MONGO_URI, MONGODB_URL, DATABASE_URL)');
+    throw new Error('MONGODB_URI is not set – add it in Vercel project settings → Environment Variables');
   }
 
   connectingPromise = mongoose
@@ -93,7 +102,11 @@ module.exports = async (req, res) => {
     await ensureMongo();
     return app(req, res);
   } catch (err) {
-    console.error('API error:', err);
-    res.status(500).json({ success: false, message: err?.message || 'Server error' });
+    console.error('API bootstrap error:', err);
+    res.status(500).json({
+      success: false,
+      message: err?.message || 'Server error',
+      hint: 'Check Vercel Environment Variables: MONGODB_URI, JWT_SECRET',
+    });
   }
 };

@@ -1,12 +1,9 @@
 const jwt = require('jsonwebtoken');
 
-const getJwtSecret = () =>
-  (process.env.JWT_SECRET || process.env.JWT_KEY || process.env.TOKEN_SECRET || '').trim();
-
 const generateToken = (userId) => {
-  const secret = getJwtSecret();
+  const secret = process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error('JWT secret is not set (expected one of: JWT_SECRET, JWT_KEY, TOKEN_SECRET)');
+    throw new Error('JWT_SECRET is not set');
   }
 
   const rawExpiresIn = (process.env.JWT_EXPIRE || '').trim();
