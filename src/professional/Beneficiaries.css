@@ -291,15 +291,31 @@
   font-weight: 600;
   font-size: 0.9rem;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.beneficiary-avatar.has-photo {
+  background: none;
+}
+
+.avatar-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
 .beneficiary-avatar.avatar-femme {
   background: linear-gradient(135deg, #f472b6, #ec4899);
 }
 
+.beneficiary-avatar.avatar-femme.has-photo {
+  background: none;
+}
+
 .detail-avatar {
-  width: 50px;
-  height: 50px;
+  width: 60px;
+  height: 60px;
   border-radius: 12px;
   background: linear-gradient(135deg, #60a5fa, #3b82f6);
   display: flex;
@@ -307,10 +323,63 @@
   justify-content: center;
   font-size: 1.5rem;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.detail-avatar.has-photo {
+  background: none;
+}
+
+.detail-avatar-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-upload-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.55);
+  color: white;
+  text-align: center;
+  font-size: 0.75rem;
+  padding: 2px 0;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.detail-avatar:hover .photo-upload-overlay {
+  opacity: 1;
+}
+
+.btn-remove-photo {
+  font-size: 0.7rem !important;
+  padding: 2px 4px !important;
+  margin-left: 6px;
+  vertical-align: middle;
+  opacity: 0.6;
+}
+.btn-remove-photo:hover {
+  opacity: 1;
+}
+
+.btn-icon-sm {
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 0.7rem !important;
 }
 
 .detail-avatar.avatar-femme {
   background: linear-gradient(135deg, #f472b6, #ec4899);
+}
+
+.detail-avatar.avatar-femme.has-photo {
+  background: none;
 }
 
 .detail-header-info {

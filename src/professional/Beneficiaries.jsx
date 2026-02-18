@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { beneficiariesAPI } from '../services/api'
 import { ProfessionalSidebar } from './SharedSidebar'
+import jsPDF from 'jspdf'
 import './ProfessionalDashboard.css'
 import './Beneficiaries.css'
 
@@ -393,6 +394,200 @@ function Beneficiaries() {
     }
   }
 
+  // ─── PHOTO UPLOAD ───
+  const handlePhotoUpload = async (beneficiaryId, file) => {
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      alert('La photo ne doit pas dépasser 2 Mo')
+      return
+    }
+    try {
+      const formData = new FormData()
+      formData.append('photo', file)
+      const response = await beneficiariesAPI.uploadPhoto(beneficiaryId, formData)
+      // Update local state
+      const newPhoto = response.data?.data?.photo
+      if (selectedBeneficiary?._id === beneficiaryId) {
+        setSelectedBeneficiary(prev => ({ ...prev, photo: newPhoto }))
+      }
+      setBeneficiaries(prev => prev.map(b => b._id === beneficiaryId ? { ...b, photo: newPhoto } : b))
+    } catch (error) {
+      alert('Erreur upload photo: ' + (error.response?.data?.message || error.message))
+    }
+  }
+
+  const handleDeletePhoto = async (beneficiaryId) => {
+    if (!window.confirm('Supprimer la photo de profil ?')) return
+    try {
+      await beneficiariesAPI.deletePhoto(beneficiaryId)
+      if (selectedBeneficiary?._id === beneficiaryId) {
+        setSelectedBeneficiary(prev => ({ ...prev, photo: null }))
+      }
+      setBeneficiaries(prev => prev.map(b => b._id === beneficiaryId ? { ...b, photo: null } : b))
+    } catch (error) {
+      alert('Erreur: ' + (error.response?.data?.message || error.message))
+    }
+  }
+
+  // ─── FICHE PDF INDIVIDUELLE ───
+  const handleExportBeneficiaryPDF = async (ben) => {
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4')
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const margin = 15
+      let y = 15
+
+      // ─── Header ───
+      doc.setFillColor(37, 99, 235)
+      doc.rect(0, 0, pageWidth, 38, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(18)
+      doc.setFont('helvetica', 'bold')
+      doc.text('ADDEL ALWAREF', pageWidth / 2, 14, { align: 'center' })
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      doc.text('Fiche Individuelle du Bénéficiaire', pageWidth / 2, 22, { align: 'center' })
+      doc.setFontSize(9)
+      doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, pageWidth / 2, 30, { align: 'center' })
+      y = 45
+
+      // ─── Photo ───
+      if (ben.photo) {
+        try {
+          doc.addImage(ben.photo, 'JPEG', pageWidth - margin - 30, y - 3, 30, 36)
+        } catch (e) { /* skip if image fails */ }
+      }
+
+      // ─── Identité ───
+      const printSection = (title, icon) => {
+        doc.setFillColor(240, 245, 255)
+        doc.rect(margin, y, pageWidth - 2 * margin, 8, 'F')
+        doc.setDrawColor(37, 99, 235)
+        doc.line(margin, y + 8, pageWidth - margin, y + 8)
+        doc.setTextColor(37, 99, 235)
+        doc.setFontSize(11)
+        doc.setFont('helvetica', 'bold')
+        doc.text(`${icon}  ${title}`, margin + 3, y + 6)
+        doc.setTextColor(33, 33, 33)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(9)
+        y += 12
+      }
+
+      const printRow = (label, value, x = margin + 3, width = 80) => {
+        if (y > 270) { doc.addPage(); y = 15 }
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(80, 80, 80)
+        doc.text(label + ':', x, y)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(33, 33, 33)
+        doc.text(String(value || 'N/A'), x + width * 0.45, y)
+        y += 6
+      }
+
+      const printTwoCol = (label1, val1, label2, val2) => {
+        if (y > 270) { doc.addPage(); y = 15 }
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(80, 80, 80)
+        doc.text(label1 + ':', margin + 3, y)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(33, 33, 33)
+        doc.text(String(val1 || 'N/A'), margin + 35, y)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(80, 80, 80)
+        doc.text(label2 + ':', margin + 95, y)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(33, 33, 33)
+        doc.text(String(val2 || 'N/A'), margin + 127, y)
+        y += 6
+      }
+
+      printSection('Informations personnelles', 'ID')
+      printTwoCol('Nom', ben.nom, 'Prenom', ben.prenom)
+      printTwoCol('Sexe', ben.sexe === 'femme' ? 'Femme' : 'Homme', 'Date naissance', ben.dateNaissance ? new Date(ben.dateNaissance).toLocaleDateString('fr-FR') : 'N/A')
+      printTwoCol('Lieu naissance', ben.lieuNaissance, 'CIN', ben.cin)
+      printTwoCol('Telephone', ben.telephone, 'Nationalite', ben.nationalite || 'Marocaine')
+      printRow('Adresse', ben.adresseOrigine)
+      y += 3
+
+      printSection('Situation sociale', 'SI')
+      printTwoCol('Situation fam.', SITUATION_LABELS[ben.situationFamiliale] || 'N/A', 'Enfants', ben.nombreEnfants || 0)
+      printTwoCol('Type situation', SITUATION_TYPE_LABELS[ben.situationType] || 'N/A', 'Education', ben.niveauEducation?.replace('_', ' ') || 'N/A')
+      printTwoCol('Profession', ben.professionAvant, 'Etat sante', ben.etatSante)
+      printTwoCol('Entite orient.', ben.entiteOrientatrice, 'Lieu interv.', ben.lieuIntervention)
+      printRow('Ma baad al iwaa', MA_BAAD_LABELS[ben.maBaadAlIwaa]?.label || 'N/A')
+      y += 3
+
+      printSection('Hebergement', 'HB')
+      printTwoCol('Statut', STATUT_CONFIG[ben.statut]?.label || 'N/A', 'Motif entree', ben.motifEntree)
+      printTwoCol('Date entree', ben.dateEntree ? new Date(ben.dateEntree).toLocaleDateString('fr-FR') : 'N/A', 'Date sortie', ben.dateSortie ? new Date(ben.dateSortie).toLocaleDateString('fr-FR') : '-')
+      printTwoCol('Chambre', ben.roomNumber || '-', 'Lit', ben.bedNumber || '-')
+      if (ben.typeDepart) printRow('Type depart', ben.typeDepart)
+      y += 3
+
+      printSection('Sante', 'SA')
+      printTwoCol('Groupe sanguin', ben.groupeSanguin || 'Non renseigne', 'Allergies', ben.allergies || 'Aucune')
+      printTwoCol('Maladies chron.', ben.maladiesChroniques || 'Aucune', 'Traitement', ben.traitementEnCours || 'Aucun')
+      y += 3
+
+      printSection('Besoins identifies', 'BS')
+      const besoinsActifs = Object.entries(BESOINS_LABELS)
+        .filter(([k]) => ben.besoins?.[k])
+        .map(([, v]) => v.label)
+      printRow('Besoins', besoinsActifs.length > 0 ? besoinsActifs.join(', ') : 'Aucun besoin identifie')
+      y += 3
+
+      if (ben.notes) {
+        printSection('Notes', 'NT')
+        const lines = doc.splitTextToSize(ben.notes, pageWidth - 2 * margin - 6)
+        lines.forEach(line => {
+          if (y > 270) { doc.addPage(); y = 15 }
+          doc.text(line, margin + 3, y)
+          y += 5
+        })
+        y += 3
+      }
+
+      // Suivi social
+      if (ben.suiviSocial?.length > 0) {
+        if (y > 230) { doc.addPage(); y = 15 }
+        printSection('Suivi social', 'SV')
+        ben.suiviSocial.slice(-10).forEach(s => {
+          if (y > 265) { doc.addPage(); y = 15 }
+          doc.setFont('helvetica', 'bold')
+          doc.text(`${new Date(s.date).toLocaleDateString('fr-FR')} - ${s.type || 'entretien'}`, margin + 3, y)
+          doc.setFont('helvetica', 'normal')
+          y += 5
+          if (s.description) {
+            const sLines = doc.splitTextToSize(s.description, pageWidth - 2 * margin - 10)
+            sLines.forEach(l => {
+              if (y > 270) { doc.addPage(); y = 15 }
+              doc.text(l, margin + 6, y)
+              y += 4.5
+            })
+          }
+          y += 2
+        })
+      }
+
+      // ─── Footer ───
+      const totalPages = doc.internal.getNumberOfPages()
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i)
+        doc.setFillColor(245, 245, 245)
+        doc.rect(0, 285, pageWidth, 12, 'F')
+        doc.setFontSize(7)
+        doc.setTextColor(140, 140, 140)
+        doc.text(`ADDEL ALWAREF - Fiche individuelle - ${ben.prenom} ${ben.nom}`, margin, 290)
+        doc.text(`Page ${i}/${totalPages}`, pageWidth - margin, 290, { align: 'right' })
+      }
+
+      doc.save(`fiche_${ben.prenom}_${ben.nom}_${new Date().toISOString().split('T')[0]}.pdf`)
+    } catch (error) {
+      alert('Erreur generation PDF: ' + error.message)
+    }
+  }
+
   // ─── DELETE ───
   const handleDelete = async (id) => {
     if (!window.confirm('Supprimer ce bénéficiaire ? Cette action est irréversible.')) return
@@ -697,8 +892,12 @@ function Beneficiaries() {
                       <td>{b.numeroOrdre || (idx + 1)}</td>
                       <td>
                         <div className="beneficiary-name">
-                          <div className={`beneficiary-avatar ${b.sexe === 'femme' ? 'avatar-femme' : ''}`}>
-                            {b.sexe === 'femme' ? '👩' : '👨'}
+                          <div className={`beneficiary-avatar ${b.sexe === 'femme' ? 'avatar-femme' : ''} ${b.photo ? 'has-photo' : ''}`}>
+                            {b.photo ? (
+                              <img src={b.photo} alt={`${b.prenom}`} className="avatar-photo" />
+                            ) : (
+                              b.sexe === 'femme' ? '👩' : '👨'
+                            )}
                           </div>
                           <div>
                             <div className="name-primary">{b.prenom} {b.nom}</div>
@@ -729,6 +928,7 @@ function Beneficiaries() {
                       <td>
                         <div className="action-buttons">
                           <button className="btn-icon" onClick={() => handleViewDetails(b)} title="Détails">👁️</button>
+                          <button className="btn-icon" onClick={() => handleExportBeneficiaryPDF(b)} title="Fiche PDF">📄</button>
                           <button className="btn-icon" onClick={() => { setEditBeneficiary(b); setShowEditModal(true) }} title="Modifier">✏️</button>
                           <button className="btn-icon btn-icon-danger" onClick={() => handleDelete(b._id)} title="Supprimer">🗑️</button>
                         </div>
@@ -1123,14 +1323,32 @@ function Beneficiaries() {
           <div className="modal-content xlarge" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="detail-header-info">
-                <div className={`detail-avatar ${selectedBeneficiary.sexe === 'femme' ? 'avatar-femme' : ''}`}>
-                  {selectedBeneficiary.sexe === 'femme' ? '👩' : '👨'}
+                <div className={`detail-avatar ${selectedBeneficiary.sexe === 'femme' ? 'avatar-femme' : ''} ${selectedBeneficiary.photo ? 'has-photo' : ''}`}>
+                  {selectedBeneficiary.photo ? (
+                    <img src={selectedBeneficiary.photo} alt={`${selectedBeneficiary.prenom}`} className="detail-avatar-photo" />
+                  ) : (
+                    selectedBeneficiary.sexe === 'femme' ? '👩' : '👨'
+                  )}
+                  <label className="photo-upload-overlay" title="Changer la photo">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => handlePhotoUpload(selectedBeneficiary._id, e.target.files[0])}
+                    />
+                    📷
+                  </label>
                 </div>
                 <div>
                   <h2>{selectedBeneficiary.prenom} {selectedBeneficiary.nom}</h2>
                   <span className={`badge ${STATUT_CONFIG[selectedBeneficiary.statut]?.class || ''}`}>
                     {STATUT_CONFIG[selectedBeneficiary.statut]?.icon} {STATUT_CONFIG[selectedBeneficiary.statut]?.label}
                   </span>
+                  {selectedBeneficiary.photo && (
+                    <button className="btn-icon btn-icon-sm btn-remove-photo" onClick={() => handleDeletePhoto(selectedBeneficiary._id)} title="Supprimer la photo">
+                      🗑️
+                    </button>
+                  )}
                 </div>
               </div>
               <button className="btn-close" onClick={() => setSelectedBeneficiary(null)}>✕</button>
@@ -1314,6 +1532,9 @@ function Beneficiaries() {
 
             <div className="modal-footer">
               <button className="btn-secondary" onClick={() => setSelectedBeneficiary(null)}>Fermer</button>
+              <button className="btn-outline" onClick={() => handleExportBeneficiaryPDF(selectedBeneficiary)}>
+                📄 Fiche PDF
+              </button>
               <button className="btn-primary" onClick={() => { setEditBeneficiary(selectedBeneficiary); setShowEditModal(true); setSelectedBeneficiary(null) }}>
                 ✏️ Modifier
               </button>

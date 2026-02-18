@@ -75,7 +75,12 @@ export const beneficiariesAPI = {
   // Distributions
   getDistributions: (id) => api.get(`/beneficiaries/${id}/distributions`),
   addDistribution: (id, data) => api.post(`/beneficiaries/${id}/distributions`, data),
-  getAllDistributions: (params) => api.get('/beneficiaries/distributions/all', { params })
+  getAllDistributions: (params) => api.get('/beneficiaries/distributions/all', { params }),
+  // Photo
+  uploadPhoto: (id, formData) => api.put(`/beneficiaries/${id}/photo`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  deletePhoto: (id) => api.delete(`/beneficiaries/${id}/photo`)
 }
 
 // Announcements API

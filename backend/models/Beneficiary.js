@@ -165,6 +165,12 @@ const beneficiarySchema = new mongoose.Schema({
     ref: 'User'
   },
 
+  // ─── Photo de profil (base64 data URL) ───
+  photo: {
+    type: String,
+    default: null
+  },
+
   // ─── Notes & Documents ───
   notes: {
     type: String,
