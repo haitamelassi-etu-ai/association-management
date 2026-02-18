@@ -7,6 +7,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Cart
 import { API_URL } from '../utils/api';
 import './FoodStockManagement.css';
 import ProfessionalLayout from '../professional/ProfessionalLayout';
+import BarcodeScanner from './BarcodeScanner';
 
 const FoodStockManagement = () => {
   const navigate = useNavigate();
@@ -41,7 +42,8 @@ const FoodStockManagement = () => {
     seuilCritique: 0,
     fournisseur: '',
     emplacement: '',
-    notes: ''
+    notes: '',
+    barcode: ''
   });
   const [consumeData, setConsumeData] = useState({ quantite: 0, raison: '' });
   const [planData, setPlanData] = useState(null);
@@ -49,6 +51,10 @@ const FoodStockManagement = () => {
   // Ajustement stock
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustData, setAdjustData] = useState({ quantite: 0, type: 'add', raison: '' });
+
+  // Barcode scanner
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanLoading, setScanLoading] = useState(false);
 
   // Tabs & Analytics
   const [activeTab, setActiveTab] = useState('stock');
@@ -747,7 +753,8 @@ const FoodStockManagement = () => {
       seuilCritique: item.seuilCritique,
       fournisseur: item.fournisseur || '',
       emplacement: item.emplacement || '',
-      notes: item.notes || ''
+      notes: item.notes || '',
+      barcode: item.barcode || ''
     });
     setShowEditModal(true);
   };
@@ -798,9 +805,51 @@ const FoodStockManagement = () => {
       seuilCritique: 0,
       fournisseur: '',
       emplacement: '',
-      notes: ''
+      notes: '',
+      barcode: ''
     });
     setCurrentItem(null);
+  };
+
+  // Barcode scan handler
+  const handleBarcodeScan = async (barcode) => {
+    setShowScanner(false);
+    setScanLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/food-stock/by-barcode/${encodeURIComponent(barcode)}`, getAuthHeaders());
+      // Product found — open edit modal with data
+      const item = res.data;
+      setCurrentItem(item);
+      setFormData({
+        nom: item.nom || '',
+        categorie: item.categorie || 'fruits-legumes',
+        quantite: item.quantite || 0,
+        unite: item.unite || 'kg',
+        prix: item.prix || 0,
+        dateAchat: item.dateAchat ? new Date(item.dateAchat).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        dateExpiration: item.dateExpiration ? new Date(item.dateExpiration).toISOString().split('T')[0] : '',
+        seuilCritique: item.seuilCritique || 0,
+        fournisseur: item.fournisseur || '',
+        emplacement: item.emplacement || '',
+        notes: item.notes || '',
+        barcode: item.barcode || barcode
+      });
+      setShowEditModal(true);
+      alert(`✅ Produit trouvé : ${item.nom}`);
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        // Product not found — open add modal with barcode pre-filled
+        resetForm();
+        setFormData(prev => ({ ...prev, barcode }));
+        setShowAddModal(true);
+        alert(`ℹ️ Produit non trouvé. Créez un nouvel article avec le code-barres : ${barcode}`);
+      } else {
+        console.error('Erreur lors de la recherche par code-barres:', error);
+        alert('Erreur lors de la recherche du produit.');
+      }
+    } finally {
+      setScanLoading(false);
+    }
   };
 
   const getStatusBadge = (statut) => {
@@ -838,11 +887,22 @@ const FoodStockManagement = () => {
           <button className="btn-export-excel" onClick={exportToExcel} title="Exporter en Excel">
             📊 Exporter en Excel
           </button>
+          <button className="btn-scanner" onClick={() => setShowScanner(true)} disabled={scanLoading}>
+            {scanLoading ? '⏳ Recherche...' : '📷 Scanner Produit'}
+          </button>
           <button className="btn-add" onClick={() => setShowAddModal(true)}>
             ➕ Ajouter un article
           </button>
         </div>
       </div>
+
+      {/* Barcode Scanner Modal */}
+      {showScanner && (
+        <BarcodeScanner
+          onScanSuccess={handleBarcodeScan}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
 
       {/* Statistiques */}
       {statistics && (
@@ -1375,6 +1435,16 @@ const FoodStockManagement = () => {
             <form onSubmit={handleAdd} className="stock-form">
               <div className="form-grid">
                 <div className="form-group">
+                  <label>Code-barres</label>
+                  <input
+                    type="text"
+                    value={formData.barcode}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    placeholder="Ex: 3017620422003"
+                  />
+                </div>
+
+                <div className="form-group">
                   <label>Nom *</label>
                   <input
                     type="text"
@@ -1516,6 +1586,16 @@ const FoodStockManagement = () => {
             <form onSubmit={handleEdit} className="stock-form">
               {/* Same form as add modal */}
               <div className="form-grid">
+                <div className="form-group">
+                  <label>Code-barres</label>
+                  <input
+                    type="text"
+                    value={formData.barcode}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    placeholder="Ex: 3017620422003"
+                  />
+                </div>
+
                 <div className="form-group">
                   <label>Nom *</label>
                   <input

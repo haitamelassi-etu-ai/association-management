@@ -1,11 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const foodStockController = require('../controllers/foodStockController');
-const { protect } = require('../middleware/auth');
+const { protect, authorize } = require('../middleware/auth');
 
 // Routes principales
 router.get('/', protect, foodStockController.getAllStock);
 router.post('/', protect, foodStockController.createStockItem);
+
+// Barcode lookup
+router.get('/by-barcode/:barcode', protect, authorize('admin', 'responsable'), foodStockController.getByBarcode);
 
 // Routes des alertes et statistiques
 router.get('/alerts/all', protect, foodStockController.getAlerts);

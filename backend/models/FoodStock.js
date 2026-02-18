@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const foodStockSchema = new mongoose.Schema({
+  barcode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true
+  },
   nom: {
     type: String,
     required: [true, 'Le nom est obligatoire'],

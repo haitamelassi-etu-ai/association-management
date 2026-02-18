@@ -101,6 +101,28 @@ exports.createStockItem = async (req, res) => {
   }
 };
 
+// Rechercher un article par code-barres
+exports.getByBarcode = async (req, res) => {
+  try {
+    const { barcode } = req.params;
+
+    if (!barcode || barcode.trim() === '') {
+      return res.status(400).json({ message: 'Le code-barres est requis' });
+    }
+
+    const item = await FoodStock.findOne({ barcode: barcode.trim() });
+
+    if (!item) {
+      return res.status(404).json({ message: 'Produit non trouvé', barcode });
+    }
+
+    res.json(item);
+  } catch (error) {
+    console.error('Erreur lors de la recherche par code-barres:', error);
+    res.status(500).json({ message: 'Erreur serveur', error: error.message });
+  }
+};
+
 // Mettre à jour un article
 exports.updateStockItem = async (req, res) => {
   try {
