@@ -281,34 +281,11 @@ const FoodStockManagement = () => {
     const today = new Date();
     const dateStr = today.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-    // Build rows from current stock
-    const dataRows = stockItems.map((item, idx) => {
-      const categoryObj = categories.find(c => c.value === item.categorie);
-      const catLabel = categoryObj ? categoryObj.icon + ' ' + categoryObj.label.replace(/^.{2}\s*/, '') : item.categorie;
-      const expDate = item.dateExpiration ? new Date(item.dateExpiration).toLocaleDateString('fr-FR') : '';
-      return `<tr>
-        <td class="num">${idx + 1}</td>
-        <td class="name">${item.nom}</td>
-        <td class="barcode">${item.barcode || '—'}</td>
-        <td>${catLabel}</td>
-        <td class="qty">${item.quantite}</td>
-        <td>${item.unite}</td>
-        <td class="qty-cell"></td>
-        <td>${(item.prix || 0).toFixed(2)}</td>
-        <td>${expDate}</td>
-        <td>${item.fournisseur || ''}</td>
-        <td>${item.emplacement || ''}</td>
-        <td class="notes-cell"></td>
-      </tr>`;
-    }).join('');
-
-    // Add 15 empty rows for manual entries
-    const emptyRows = Array.from({ length: 15 }, (_, i) => `<tr class="empty-row">
-        <td class="num">${stockItems.length + i + 1}</td>
+    // 30 empty rows for manual paper entry
+    const emptyRows = Array.from({ length: 30 }, (_, i) => `<tr>
+        <td class="num">${i + 1}</td>
         <td class="name"></td>
         <td class="barcode"></td>
-        <td></td>
-        <td class="qty"></td>
         <td></td>
         <td class="qty-cell"></td>
         <td></td>
@@ -324,7 +301,7 @@ const FoodStockManagement = () => {
       <html lang="fr" dir="ltr">
       <head>
         <meta charset="utf-8">
-        <title>Fiche Inventaire — Stock Alimentaire</title>
+        <title>Fiche de Saisie — Nouveaux Articles</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; color: #333; font-size: 11px; }
@@ -342,22 +319,24 @@ const FoodStockManagement = () => {
           .instructions strong { font-size: 12px; }
           .instructions ol { margin: 5px 0 0 18px; line-height: 1.6; }
 
+          .categories-ref { margin-bottom: 12px; font-size: 10px; color: #555; }
+          .categories-ref strong { color: #2E7D32; }
+          .cat-list { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+          .cat-tag { background: #e8f5e9; border: 1px solid #a5d6a7; padding: 2px 8px; border-radius: 4px; }
+
           table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-          th { background: #2E7D32; color: white; padding: 6px 4px; text-align: center; font-size: 10px; font-weight: 600; white-space: nowrap; }
-          td { padding: 5px 4px; border: 1px solid #bbb; text-align: center; font-size: 10px; }
-          td.name { text-align: left; font-weight: 500; min-width: 100px; }
-          td.barcode { font-family: 'Courier New', monospace; font-size: 9px; min-width: 80px; }
+          th { background: #2E7D32; color: white; padding: 7px 4px; text-align: center; font-size: 10px; font-weight: 600; }
+          td { padding: 5px 4px; border: 1px solid #bbb; text-align: center; font-size: 10px; height: 28px; }
+          td.name { text-align: left; min-width: 110px; }
+          td.barcode { font-family: 'Courier New', monospace; font-size: 9px; min-width: 85px; }
           td.num { width: 25px; color: #999; font-size: 9px; }
-          td.qty { font-weight: 600; }
-          td.qty-cell { background: #FFFDE7; min-width: 55px; }
-          td.notes-cell { min-width: 70px; background: #fafafa; }
+          td.qty-cell { min-width: 55px; }
+          td.notes-cell { min-width: 80px; background: #fafafa; }
 
           tr:nth-child(even) { background: #f9f9f9; }
-          tr.empty-row td { height: 26px; }
 
-          .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 12px; font-size: 10px; }
-          .legend-item { display: flex; align-items: center; gap: 5px; }
-          .legend-color { width: 14px; height: 14px; border: 1px solid #ccc; border-radius: 3px; }
+          .units-ref { margin-bottom: 12px; font-size: 10px; color: #555; }
+          .units-ref strong { color: #2E7D32; }
 
           .signatures-section { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
           .sig-box { text-align: center; padding-top: 10px; }
@@ -370,36 +349,49 @@ const FoodStockManagement = () => {
             body { padding: 10px; }
             .instructions { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            td.qty-cell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            td.notes-cell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           }
         </style>
       </head>
       <body>
         <div class="header">
           <h1>ADDEL ALWAREF</h1>
-          <h2>📋 Fiche d'Inventaire — Stock Alimentaire</h2>
+          <h2>📋 Fiche de Saisie — Nouveaux Articles</h2>
         </div>
 
         <div class="meta-grid">
           <div class="meta-item"><span class="lbl">Date :</span> <span>${dateStr}</span></div>
           <div class="meta-item"><span class="lbl">Responsable :</span> <span class="line"></span></div>
           <div class="meta-item"><span class="lbl">Dépôt / Lieu :</span> <span class="line"></span></div>
-          <div class="meta-item"><span class="lbl">N° d'inventaire :</span> <span class="line"></span></div>
+          <div class="meta-item"><span class="lbl">N° de fiche :</span> <span class="line"></span></div>
         </div>
 
         <div class="instructions">
           <strong>📌 Instructions :</strong>
           <ol>
-            <li>Vérifiez chaque article physiquement et notez la <strong>quantité réelle</strong> dans la colonne jaune.</li>
-            <li>Utilisez les lignes vides en bas pour ajouter les articles non listés.</li>
-            <li>Notez tout écart, dommage ou remarque dans la colonne <strong>Observations</strong>.</li>
-            <li>Signez et remettez cette fiche au responsable à la fin de l'inventaire.</li>
+            <li>Remplissez une ligne par article à ajouter au stock.</li>
+            <li>Notez le <strong>nom</strong>, la <strong>quantité</strong>, l'<strong>unité</strong>, le <strong>prix unitaire</strong> et la <strong>date d'expiration</strong>.</li>
+            <li>Si disponible, notez le <strong>code-barres</strong> inscrit sur l'emballage.</li>
+            <li>Choisissez la catégorie parmi celles listées ci-dessous.</li>
+            <li>Remettez cette fiche au responsable pour saisie dans le système.</li>
           </ol>
         </div>
 
-        <div class="legend">
-          <div class="legend-item"><div class="legend-color" style="background:#FFFDE7;"></div> Quantité réelle (à remplir)</div>
-          <div class="legend-item"><div class="legend-color" style="background:#fafafa;"></div> Observations</div>
+        <div class="categories-ref">
+          <strong>Catégories :</strong>
+          <div class="cat-list">
+            <span class="cat-tag">🍎 Fruits & Légumes</span>
+            <span class="cat-tag">🥩 Viandes & Poissons</span>
+            <span class="cat-tag">🥛 Produits Laitiers</span>
+            <span class="cat-tag">🍞 Céréales & Pains</span>
+            <span class="cat-tag">🥫 Conserves</span>
+            <span class="cat-tag">🥤 Boissons</span>
+            <span class="cat-tag">📦 Autres</span>
+          </div>
+        </div>
+
+        <div class="units-ref">
+          <strong>Unités :</strong> kg · g · L · ml · unités · boîtes · sachets
         </div>
 
         <table>
@@ -409,26 +401,22 @@ const FoodStockManagement = () => {
               <th>Nom du Produit</th>
               <th>Code-barres</th>
               <th>Catégorie</th>
-              <th>Qté Système</th>
+              <th>Quantité</th>
               <th>Unité</th>
-              <th style="background:#F9A825;color:#333;">Qté Réelle ✍️</th>
-              <th>Prix (DH)</th>
+              <th>Prix Unit. (DH)</th>
               <th>Date Exp.</th>
               <th>Fournisseur</th>
-              <th>Emplacement</th>
               <th>Observations</th>
             </tr>
           </thead>
           <tbody>
-            ${dataRows}
-            <tr style="background:#e8f5e9;"><td colspan="12" style="text-align:center;font-weight:600;color:#2E7D32;padding:6px;">— Lignes supplémentaires (articles non listés) —</td></tr>
             ${emptyRows}
           </tbody>
         </table>
 
         <div class="signatures-section">
           <div class="sig-box">
-            <div class="sig-label">Effectué par</div>
+            <div class="sig-label">Rempli par</div>
             <div class="sig-line">Nom & Signature</div>
           </div>
           <div class="sig-box">
@@ -436,13 +424,13 @@ const FoodStockManagement = () => {
             <div class="sig-line">Nom & Signature</div>
           </div>
           <div class="sig-box">
-            <div class="sig-label">Approuvé par</div>
+            <div class="sig-label">Saisi par</div>
             <div class="sig-line">Nom & Signature</div>
           </div>
         </div>
 
         <div class="footer">
-          ADDEL ALWAREF — Fiche d'inventaire générée le ${dateStr} — Total articles listés : ${stockItems.length}
+          ADDEL ALWAREF — Fiche de saisie générée le ${dateStr}
         </div>
       </body>
       </html>
