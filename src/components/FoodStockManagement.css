@@ -1130,6 +1130,27 @@
 }
 
 /* ═══════════════════════════════════════ */
+/* Inventory Sheet Button                 */
+/* ═══════════════════════════════════════ */
+.btn-inventory {
+  background: linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(46, 125, 50, 0.3);
+}
+
+.btn-inventory:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(46, 125, 50, 0.4);
+}
+
+/* ═══════════════════════════════════════ */
 /* Summary Section                        */
 /* ═══════════════════════════════════════ */
 .stock-summary {
