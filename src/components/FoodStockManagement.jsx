@@ -812,12 +812,12 @@ const FoodStockManagement = () => {
   };
 
   // Barcode scan handler
-  const handleBarcodeScan = async (barcode) => {
+  const handleBarcodeScan = async (barcode, productInfo) => {
     setShowScanner(false);
     setScanLoading(true);
     try {
       const res = await axios.get(`${API_URL}/food-stock/by-barcode/${encodeURIComponent(barcode)}`, getAuthHeaders());
-      // Product found — open edit modal with data
+      // Product found in local DB — open edit modal with data
       const item = res.data;
       setCurrentItem(item);
       setFormData({
@@ -835,14 +835,30 @@ const FoodStockManagement = () => {
         barcode: item.barcode || barcode
       });
       setShowEditModal(true);
-      alert(`✅ Produit trouvé : ${item.nom}`);
+      alert(`✅ Produit trouvé dans votre stock : ${item.nom}`);
     } catch (error) {
       if (error.response && error.response.status === 404) {
-        // Product not found — open add modal with barcode pre-filled
+        // Product not in local DB — pre-fill with Open Food Facts data
         resetForm();
-        setFormData(prev => ({ ...prev, barcode }));
-        setShowAddModal(true);
-        alert(`ℹ️ Produit non trouvé. Créez un nouvel article avec le code-barres : ${barcode}`);
+        if (productInfo && productInfo.found) {
+          setFormData(prev => ({
+            ...prev,
+            barcode,
+            nom: productInfo.nom || '',
+            categorie: productInfo.categorie || 'autres',
+            notes: [
+              productInfo.marque ? `Marque: ${productInfo.marque}` : '',
+              productInfo.quantiteLabel ? `Contenu: ${productInfo.quantiteLabel}` : '',
+              productInfo.nutriscore ? `Nutri-Score: ${productInfo.nutriscore.toUpperCase()}` : '',
+            ].filter(Boolean).join(' | ')
+          }));
+          setShowAddModal(true);
+          alert(`🌐 Produit trouvé en ligne : ${productInfo.nom || barcode}\nLes informations ont été pré-remplies.`);
+        } else {
+          setFormData(prev => ({ ...prev, barcode }));
+          setShowAddModal(true);
+          alert(`ℹ️ Produit non trouvé. Créez un nouvel article avec le code-barres : ${barcode}`);
+        }
       } else {
         console.error('Erreur lors de la recherche par code-barres:', error);
         alert('Erreur lors de la recherche du produit.');
