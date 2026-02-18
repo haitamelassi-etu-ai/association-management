@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { beneficiariesAPI } from '../services/api'
 import { ProfessionalSidebar } from './SharedSidebar'
 import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 import './ProfessionalDashboard.css'
 import './Beneficiaries.css'
 
@@ -432,159 +433,181 @@ function Beneficiaries() {
   // ─── FICHE PDF INDIVIDUELLE ───
   const handleExportBeneficiaryPDF = async (ben) => {
     try {
-      const doc = new jsPDF('p', 'mm', 'a4')
-      const pageWidth = doc.internal.pageSize.getWidth()
-      const margin = 15
-      let y = 15
+      // Build full HTML fiche with inline styles (Arabic-safe)
+      const logoUrl = window.location.origin + '/images/logo.png'
+      const photoHtml = ben.photo
+        ? `<img src="${ben.photo}" style="width:90px;height:110px;object-fit:cover;border-radius:10px;border:3px solid #e2e8f0;" />`
+        : `<div style="width:90px;height:110px;border-radius:10px;background:linear-gradient(135deg,#60a5fa,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:48px;color:#fff;">${ben.sexe === 'femme' ? '👩' : '👨'}</div>`
 
-      // ─── Header ───
-      doc.setFillColor(37, 99, 235)
-      doc.rect(0, 0, pageWidth, 38, 'F')
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(18)
-      doc.setFont('helvetica', 'bold')
-      doc.text('ADDEL ALWAREF', pageWidth / 2, 14, { align: 'center' })
-      doc.setFontSize(11)
-      doc.setFont('helvetica', 'normal')
-      doc.text('Fiche Individuelle du Bénéficiaire', pageWidth / 2, 22, { align: 'center' })
-      doc.setFontSize(9)
-      doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, pageWidth / 2, 30, { align: 'center' })
-      y = 45
+      const row = (label, value) => `
+        <tr>
+          <td style="padding:5px 10px;font-weight:600;color:#475569;white-space:nowrap;width:35%;border-bottom:1px solid #f1f5f9;font-size:12px;">${label}</td>
+          <td style="padding:5px 10px;color:#1e293b;border-bottom:1px solid #f1f5f9;font-size:12px;">${value || 'N/A'}</td>
+        </tr>`
 
-      // ─── Photo ───
-      if (ben.photo) {
-        try {
-          doc.addImage(ben.photo, 'JPEG', pageWidth - margin - 30, y - 3, 30, 36)
-        } catch (e) { /* skip if image fails */ }
-      }
+      const twoCol = (l1, v1, l2, v2) => `
+        <tr>
+          <td style="padding:5px 10px;font-weight:600;color:#475569;white-space:nowrap;width:18%;border-bottom:1px solid #f1f5f9;font-size:12px;">${l1}</td>
+          <td style="padding:5px 10px;color:#1e293b;width:32%;border-bottom:1px solid #f1f5f9;font-size:12px;">${v1 || 'N/A'}</td>
+          <td style="padding:5px 10px;font-weight:600;color:#475569;white-space:nowrap;width:18%;border-bottom:1px solid #f1f5f9;font-size:12px;">${l2}</td>
+          <td style="padding:5px 10px;color:#1e293b;width:32%;border-bottom:1px solid #f1f5f9;font-size:12px;">${v2 || 'N/A'}</td>
+        </tr>`
 
-      // ─── Identité ───
-      const printSection = (title, icon) => {
-        doc.setFillColor(240, 245, 255)
-        doc.rect(margin, y, pageWidth - 2 * margin, 8, 'F')
-        doc.setDrawColor(37, 99, 235)
-        doc.line(margin, y + 8, pageWidth - margin, y + 8)
-        doc.setTextColor(37, 99, 235)
-        doc.setFontSize(11)
-        doc.setFont('helvetica', 'bold')
-        doc.text(`${icon}  ${title}`, margin + 3, y + 6)
-        doc.setTextColor(33, 33, 33)
-        doc.setFont('helvetica', 'normal')
-        doc.setFontSize(9)
-        y += 12
-      }
+      const sectionTitle = (title) => `
+        <tr><td colspan="4" style="padding:12px 10px 6px;font-size:14px;font-weight:700;color:#2563eb;border-bottom:2px solid #2563eb;background:#f0f5ff;">
+          ${title}
+        </td></tr>`
 
-      const printRow = (label, value, x = margin + 3, width = 80) => {
-        if (y > 270) { doc.addPage(); y = 15 }
-        doc.setFont('helvetica', 'bold')
-        doc.setTextColor(80, 80, 80)
-        doc.text(label + ':', x, y)
-        doc.setFont('helvetica', 'normal')
-        doc.setTextColor(33, 33, 33)
-        doc.text(String(value || 'N/A'), x + width * 0.45, y)
-        y += 6
-      }
-
-      const printTwoCol = (label1, val1, label2, val2) => {
-        if (y > 270) { doc.addPage(); y = 15 }
-        doc.setFont('helvetica', 'bold')
-        doc.setTextColor(80, 80, 80)
-        doc.text(label1 + ':', margin + 3, y)
-        doc.setFont('helvetica', 'normal')
-        doc.setTextColor(33, 33, 33)
-        doc.text(String(val1 || 'N/A'), margin + 35, y)
-        doc.setFont('helvetica', 'bold')
-        doc.setTextColor(80, 80, 80)
-        doc.text(label2 + ':', margin + 95, y)
-        doc.setFont('helvetica', 'normal')
-        doc.setTextColor(33, 33, 33)
-        doc.text(String(val2 || 'N/A'), margin + 127, y)
-        y += 6
-      }
-
-      printSection('Informations personnelles', 'ID')
-      printTwoCol('Nom', ben.nom, 'Prenom', ben.prenom)
-      printTwoCol('Sexe', ben.sexe === 'femme' ? 'Femme' : 'Homme', 'Date naissance', ben.dateNaissance ? new Date(ben.dateNaissance).toLocaleDateString('fr-FR') : 'N/A')
-      printTwoCol('Lieu naissance', ben.lieuNaissance, 'CIN', ben.cin)
-      printTwoCol('Telephone', ben.telephone, 'Nationalite', ben.nationalite || 'Marocaine')
-      printRow('Adresse', ben.adresseOrigine)
-      y += 3
-
-      printSection('Situation sociale', 'SI')
-      printTwoCol('Situation fam.', SITUATION_LABELS[ben.situationFamiliale] || 'N/A', 'Enfants', ben.nombreEnfants || 0)
-      printTwoCol('Type situation', SITUATION_TYPE_LABELS[ben.situationType] || 'N/A', 'Education', ben.niveauEducation?.replace('_', ' ') || 'N/A')
-      printTwoCol('Profession', ben.professionAvant, 'Etat sante', ben.etatSante)
-      printTwoCol('Entite orient.', ben.entiteOrientatrice, 'Lieu interv.', ben.lieuIntervention)
-      printRow('Ma baad al iwaa', MA_BAAD_LABELS[ben.maBaadAlIwaa]?.label || 'N/A')
-      y += 3
-
-      printSection('Hebergement', 'HB')
-      printTwoCol('Statut', STATUT_CONFIG[ben.statut]?.label || 'N/A', 'Motif entree', ben.motifEntree)
-      printTwoCol('Date entree', ben.dateEntree ? new Date(ben.dateEntree).toLocaleDateString('fr-FR') : 'N/A', 'Date sortie', ben.dateSortie ? new Date(ben.dateSortie).toLocaleDateString('fr-FR') : '-')
-      printTwoCol('Chambre', ben.roomNumber || '-', 'Lit', ben.bedNumber || '-')
-      if (ben.typeDepart) printRow('Type depart', ben.typeDepart)
-      y += 3
-
-      printSection('Sante', 'SA')
-      printTwoCol('Groupe sanguin', ben.groupeSanguin || 'Non renseigne', 'Allergies', ben.allergies || 'Aucune')
-      printTwoCol('Maladies chron.', ben.maladiesChroniques || 'Aucune', 'Traitement', ben.traitementEnCours || 'Aucun')
-      y += 3
-
-      printSection('Besoins identifies', 'BS')
       const besoinsActifs = Object.entries(BESOINS_LABELS)
         .filter(([k]) => ben.besoins?.[k])
-        .map(([, v]) => v.label)
-      printRow('Besoins', besoinsActifs.length > 0 ? besoinsActifs.join(', ') : 'Aucun besoin identifie')
-      y += 3
+        .map(([, v]) => `<span style="display:inline-block;padding:3px 10px;margin:2px;background:#dbeafe;color:#1e40af;border-radius:12px;font-size:11px;">${v.icon} ${v.label}</span>`)
+        .join('')
 
-      if (ben.notes) {
-        printSection('Notes', 'NT')
-        const lines = doc.splitTextToSize(ben.notes, pageWidth - 2 * margin - 6)
-        lines.forEach(line => {
-          if (y > 270) { doc.addPage(); y = 15 }
-          doc.text(line, margin + 3, y)
-          y += 5
-        })
-        y += 3
+      const suiviHtml = (ben.suiviSocial?.length > 0) ? ben.suiviSocial.slice(-10).map(s => `
+        <div style="margin:6px 0;padding:8px 12px;background:#f8fafc;border-left:3px solid #2563eb;border-radius:0 6px 6px 0;">
+          <div style="font-weight:600;color:#2563eb;font-size:11px;">${new Date(s.date).toLocaleDateString('fr-FR')} — ${s.type || 'entretien'}</div>
+          <div style="color:#334155;font-size:11px;margin-top:3px;">${s.description || ''}</div>
+        </div>`).join('') : '<p style="color:#94a3b8;font-size:12px;text-align:center;">Aucun suivi enregistré</p>'
+
+      const htmlContent = `
+        <div id="pdf-fiche" style="width:794px;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#fff;color:#1e293b;padding:0;">
+          <!-- HEADER -->
+          <div style="background:linear-gradient(135deg,#1e40af,#2563eb);padding:18px 30px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:15px;">
+              <img src="${logoUrl}" style="width:60px;height:60px;border-radius:12px;background:#fff;object-fit:contain;" crossorigin="anonymous" />
+              <div>
+                <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:1px;">جمعية عدل الوارف</div>
+                <div style="color:#bfdbfe;font-size:14px;font-weight:500;">ADDEL ALWAREF</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="color:#fff;font-size:14px;font-weight:600;">Fiche Individuelle du Bénéficiaire</div>
+              <div style="color:#bfdbfe;font-size:11px;">Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</div>
+            </div>
+          </div>
+
+          <!-- IDENTITY STRIP -->
+          <div style="padding:15px 30px;display:flex;gap:20px;align-items:center;border-bottom:2px solid #e2e8f0;">
+            ${photoHtml}
+            <div style="flex:1;">
+              <div style="font-size:22px;font-weight:700;color:#1e293b;">${ben.prenom || ''} ${ben.nom || ''}</div>
+              <div style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;">
+                <span style="display:inline-block;padding:3px 12px;border-radius:12px;font-size:11px;font-weight:600;background:${STATUT_CONFIG[ben.statut]?.class === 'badge-heberge' ? '#dcfce7;color:#16a34a' : STATUT_CONFIG[ben.statut]?.class === 'badge-sorti' ? '#fee2e2;color:#dc2626' : '#dbeafe;color:#2563eb'};">
+                  ${STATUT_CONFIG[ben.statut]?.icon || ''} ${STATUT_CONFIG[ben.statut]?.label || ben.statut}
+                </span>
+                ${ben.cin ? `<span style="display:inline-block;padding:3px 12px;border-radius:12px;font-size:11px;background:#f1f5f9;color:#475569;">CIN: ${ben.cin}</span>` : ''}
+                ${ben.age ? `<span style="display:inline-block;padding:3px 12px;border-radius:12px;font-size:11px;background:#f1f5f9;color:#475569;">${ben.age} ans</span>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <!-- BODY -->
+          <div style="padding:10px 30px 20px;">
+            <table style="width:100%;border-collapse:collapse;">
+              ${sectionTitle('📋 Informations personnelles / المعلومات الشخصية')}
+              ${twoCol('Nom / الإسم', ben.nom, 'Prénom / اللقب', ben.prenom)}
+              ${twoCol('Sexe', ben.sexe === 'femme' ? 'Femme' : 'Homme', 'Date de naissance', ben.dateNaissance ? new Date(ben.dateNaissance).toLocaleDateString('fr-FR') : 'N/A')}
+              ${twoCol('Lieu de naissance / مكان الازدياد', ben.lieuNaissance, 'CIN / رقم البطاقة الوطنية', ben.cin)}
+              ${twoCol('Téléphone', ben.telephone, 'Nationalité', ben.nationalite || 'Marocaine')}
+              ${row('Adresse / العنوان', ben.adresseOrigine)}
+
+              ${sectionTitle('🏠 Situation sociale / الحالة الاجتماعية')}
+              ${twoCol('Situation familiale', SITUATION_LABELS[ben.situationFamiliale] || 'N/A', 'Nombre d\'enfants', ben.nombreEnfants || 0)}
+              ${twoCol('الحالة الاجتماعية', SITUATION_TYPE_LABELS[ben.situationType] || 'N/A', 'Niveau d\'éducation', ben.niveauEducation?.replace('_', ' ') || 'N/A')}
+              ${twoCol('Profession avant', ben.professionAvant, 'الحالة الصحية', ben.etatSante)}
+              ${twoCol('الجهة الموجهة', ben.entiteOrientatrice, 'مكان التدخل', ben.lieuIntervention)}
+              ${row('ما بعد الايواء', MA_BAAD_LABELS[ben.maBaadAlIwaa]?.label ? `${MA_BAAD_LABELS[ben.maBaadAlIwaa]?.icon || ''} ${MA_BAAD_LABELS[ben.maBaadAlIwaa]?.label}` : 'N/A')}
+
+              ${sectionTitle('🛏️ Hébergement / الإيواء')}
+              ${twoCol('Statut', STATUT_CONFIG[ben.statut]?.label || 'N/A', 'Motif d\'entrée', ben.motifEntree)}
+              ${twoCol('تاريخ الايواء', ben.dateEntree ? new Date(ben.dateEntree).toLocaleDateString('fr-FR') : 'N/A', 'تاريخ المغادرة', ben.dateSortie ? new Date(ben.dateSortie).toLocaleDateString('fr-FR') : '-')}
+              ${twoCol('Chambre', ben.roomNumber || '-', 'Lit', ben.bedNumber || '-')}
+              ${ben.typeDepart ? row('Type de départ', ben.typeDepart) : ''}
+
+              ${sectionTitle('🏥 Santé / الصحة')}
+              ${twoCol('Groupe sanguin', ben.groupeSanguin || 'Non renseigné', 'Allergies', ben.allergies || 'Aucune')}
+              ${twoCol('Maladies chroniques', ben.maladiesChroniques || 'Aucune', 'Traitement en cours', ben.traitementEnCours || 'Aucun')}
+
+              ${sectionTitle('📦 Besoins identifiés / الاحتياجات')}
+              <tr><td colspan="4" style="padding:8px 10px;">
+                ${besoinsActifs || '<span style="color:#94a3b8;font-size:12px;">Aucun besoin identifié</span>'}
+              </td></tr>
+
+              ${ben.notes ? `
+                ${sectionTitle('📝 Notes')}
+                <tr><td colspan="4" style="padding:8px 10px;font-size:12px;color:#334155;line-height:1.6;">
+                  ${ben.notes}
+                </td></tr>
+              ` : ''}
+
+              ${ben.suiviSocial?.length > 0 ? `
+                ${sectionTitle('📋 Suivi social / المتابعة الاجتماعية')}
+                <tr><td colspan="4" style="padding:8px 10px;">
+                  ${suiviHtml}
+                </td></tr>
+              ` : ''}
+            </table>
+          </div>
+
+          <!-- FOOTER -->
+          <div style="background:#f8fafc;padding:10px 30px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;">
+            <span>جمعية عدل الوارف ADDEL ALWAREF — Fiche individuelle — ${ben.prenom} ${ben.nom}</span>
+            <span>${new Date().toLocaleString('fr-FR')}</span>
+          </div>
+        </div>`
+
+      // Create off-screen container, render to canvas, then PDF
+      const container = document.createElement('div')
+      container.style.position = 'fixed'
+      container.style.left = '-9999px'
+      container.style.top = '0'
+      container.innerHTML = htmlContent
+      document.body.appendChild(container)
+
+      const ficheEl = container.querySelector('#pdf-fiche')
+
+      // Wait for images to load
+      const imgs = ficheEl.querySelectorAll('img')
+      await Promise.all([...imgs].map(img => new Promise(resolve => {
+        if (img.complete) return resolve()
+        img.onload = resolve
+        img.onerror = resolve
+      })))
+
+      const canvas = await html2canvas(ficheEl, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      })
+
+      document.body.removeChild(container)
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95)
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = pdf.internal.pageSize.getHeight()
+      const imgWidth = pdfWidth
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width
+
+      let heightLeft = imgHeight
+      let position = 0
+
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pdfHeight
+
+      while (heightLeft > 0) {
+        position -= pdfHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pdfHeight
       }
 
-      // Suivi social
-      if (ben.suiviSocial?.length > 0) {
-        if (y > 230) { doc.addPage(); y = 15 }
-        printSection('Suivi social', 'SV')
-        ben.suiviSocial.slice(-10).forEach(s => {
-          if (y > 265) { doc.addPage(); y = 15 }
-          doc.setFont('helvetica', 'bold')
-          doc.text(`${new Date(s.date).toLocaleDateString('fr-FR')} - ${s.type || 'entretien'}`, margin + 3, y)
-          doc.setFont('helvetica', 'normal')
-          y += 5
-          if (s.description) {
-            const sLines = doc.splitTextToSize(s.description, pageWidth - 2 * margin - 10)
-            sLines.forEach(l => {
-              if (y > 270) { doc.addPage(); y = 15 }
-              doc.text(l, margin + 6, y)
-              y += 4.5
-            })
-          }
-          y += 2
-        })
-      }
-
-      // ─── Footer ───
-      const totalPages = doc.internal.getNumberOfPages()
-      for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i)
-        doc.setFillColor(245, 245, 245)
-        doc.rect(0, 285, pageWidth, 12, 'F')
-        doc.setFontSize(7)
-        doc.setTextColor(140, 140, 140)
-        doc.text(`ADDEL ALWAREF - Fiche individuelle - ${ben.prenom} ${ben.nom}`, margin, 290)
-        doc.text(`Page ${i}/${totalPages}`, pageWidth - margin, 290, { align: 'right' })
-      }
-
-      doc.save(`fiche_${ben.prenom}_${ben.nom}_${new Date().toISOString().split('T')[0]}.pdf`)
+      pdf.save(`fiche_${ben.prenom}_${ben.nom}_${new Date().toISOString().split('T')[0]}.pdf`)
     } catch (error) {
-      alert('Erreur generation PDF: ' + error.message)
+      console.error('PDF error:', error)
+      alert('Erreur génération PDF: ' + error.message)
     }
   }
 
