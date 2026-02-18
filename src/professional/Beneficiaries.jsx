@@ -435,9 +435,6 @@ function Beneficiaries() {
     try {
       // Build full HTML fiche with inline styles (Arabic-safe)
       const logoUrl = window.location.origin + '/images/logo.png'
-      const photoHtml = ben.photo
-        ? `<img src="${ben.photo}" style="width:90px;height:110px;object-fit:cover;border-radius:10px;border:3px solid #e2e8f0;" />`
-        : `<div style="width:90px;height:110px;border-radius:10px;background:linear-gradient(135deg,#60a5fa,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:48px;color:#fff;">${ben.sexe === 'femme' ? '👩' : '👨'}</div>`
 
       const row = (label, value) => `
         <tr>
@@ -476,28 +473,12 @@ function Beneficiaries() {
             <div style="display:flex;align-items:center;gap:15px;">
               <img src="${logoUrl}" style="width:60px;height:60px;border-radius:12px;background:#fff;object-fit:contain;" crossorigin="anonymous" />
               <div>
-                <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:1px;">جمعية عدل الوارف</div>
-                <div style="color:#bfdbfe;font-size:14px;font-weight:500;">ADDEL ALWAREF</div>
+                <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:1px;">ADDEL ALWAREF</div>
+                <div style="color:#bfdbfe;font-size:13px;font-weight:500;">Fiche Individuelle du Bénéficiaire</div>
               </div>
             </div>
             <div style="text-align:right;">
-              <div style="color:#fff;font-size:14px;font-weight:600;">Fiche Individuelle du Bénéficiaire</div>
               <div style="color:#bfdbfe;font-size:11px;">Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</div>
-            </div>
-          </div>
-
-          <!-- IDENTITY STRIP -->
-          <div style="padding:15px 30px;display:flex;gap:20px;align-items:center;border-bottom:2px solid #e2e8f0;">
-            ${photoHtml}
-            <div style="flex:1;">
-              <div style="font-size:22px;font-weight:700;color:#1e293b;">${ben.prenom || ''} ${ben.nom || ''}</div>
-              <div style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;">
-                <span style="display:inline-block;padding:3px 12px;border-radius:12px;font-size:11px;font-weight:600;background:${STATUT_CONFIG[ben.statut]?.class === 'badge-heberge' ? '#dcfce7;color:#16a34a' : STATUT_CONFIG[ben.statut]?.class === 'badge-sorti' ? '#fee2e2;color:#dc2626' : '#dbeafe;color:#2563eb'};">
-                  ${STATUT_CONFIG[ben.statut]?.icon || ''} ${STATUT_CONFIG[ben.statut]?.label || ben.statut}
-                </span>
-                ${ben.cin ? `<span style="display:inline-block;padding:3px 12px;border-radius:12px;font-size:11px;background:#f1f5f9;color:#475569;">CIN: ${ben.cin}</span>` : ''}
-                ${ben.age ? `<span style="display:inline-block;padding:3px 12px;border-radius:12px;font-size:11px;background:#f1f5f9;color:#475569;">${ben.age} ans</span>` : ''}
-              </div>
             </div>
           </div>
 
