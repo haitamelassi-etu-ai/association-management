@@ -15,7 +15,18 @@ router.get('/alerts/all', protect, foodStockController.getAlerts);
 router.get('/stats/overview', protect, foodStockController.getStatistics);
 router.get('/stats/charts', protect, foodStockController.getChartData);
 router.get('/stats/expiration-calendar', protect, foodStockController.getExpirationCalendar);
+router.get('/stats/value-dashboard', protect, foodStockController.getValueDashboard);
 router.get('/history/global', protect, foodStockController.getGlobalHistory);
+router.get('/reorder/suggestions', protect, foodStockController.getReorderSuggestions);
+router.get('/suppliers/list', protect, foodStockController.getSuppliers);
+router.get('/meals/suggestions', protect, foodStockController.getMealSuggestions);
+
+// Batch operations
+router.post('/batch/consume', protect, foodStockController.batchConsume);
+router.post('/batch/sortie', protect, foodStockController.batchSortie);
+router.post('/batch/delete', protect, foodStockController.batchDelete);
+router.post('/batch/import', protect, foodStockController.bulkImport);
+router.post('/inventory/count', protect, foodStockController.performInventoryCount);
 
 // Routes pour un article spécifique
 router.get('/:id', protect, foodStockController.getStockItem);

@@ -80,6 +80,39 @@ const FoodStockManagement = () => {
     page: 1
   });
 
+  // Batch operations
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchAction, setBatchAction] = useState('consume');
+  const [batchSortieData, setBatchSortieData] = useState({ typeSortie: 'don', destination: '', raison: '' });
+
+  // Value Dashboard
+  const [valueDashboard, setValueDashboard] = useState(null);
+
+  // Reorder Suggestions
+  const [reorderData, setReorderData] = useState(null);
+
+  // Inventory Count (جرد)
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [inventoryCounts, setInventoryCounts] = useState([]);
+
+  // Import Excel
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importData, setImportData] = useState([]);
+  const [importLoading, setImportLoading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Suppliers
+  const [suppliersData, setSuppliersData] = useState(null);
+
+  // Meal Suggestions
+  const [mealData, setMealData] = useState(null);
+
+  // QR Code
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrItem, setQrItem] = useState(null);
+
   const categories = [
     { value: 'fruits-legumes', label: '🍎 Fruits & Légumes', icon: '🥗' },
     { value: 'viandes-poissons', label: '🥩 Viandes & Poissons', icon: '🍖' },
@@ -845,11 +878,233 @@ const FoodStockManagement = () => {
     setShowSortieModal(true);
   };
 
+  // ═══════════════════════════════════════
+  // BATCH OPERATIONS
+  // ═══════════════════════════════════════
+  const toggleSelectItem = (id) => {
+    setSelectedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+  const toggleSelectAll = () => {
+    if (selectAll) { setSelectedItems([]); setSelectAll(false); }
+    else { setSelectedItems(stockItems.map(i => i._id)); setSelectAll(true); }
+  };
+  const openBatchModal = (action) => {
+    if (selectedItems.length === 0) { alert('Sélectionnez des articles'); return; }
+    setBatchAction(action);
+    setShowBatchModal(true);
+  };
+  const handleBatchAction = async () => {
+    const items = selectedItems.map(id => {
+      const item = stockItems.find(i => i._id === id);
+      return { id, quantite: item?.quantite || 0 };
+    });
+    try {
+      let res;
+      if (batchAction === 'consume') {
+        res = await axios.post(`${API_URL}/food-stock/batch/consume`, { items: items.map(i => ({ ...i, raison: 'Consommation par lot' })) }, getAuthHeaders());
+      } else if (batchAction === 'sortie') {
+        res = await axios.post(`${API_URL}/food-stock/batch/sortie`, { items, ...batchSortieData }, getAuthHeaders());
+      } else if (batchAction === 'delete') {
+        if (!window.confirm(`Supprimer ${selectedItems.length} articles ?`)) return;
+        res = await axios.post(`${API_URL}/food-stock/batch/delete`, { ids: selectedItems }, getAuthHeaders());
+      }
+      setShowBatchModal(false);
+      setSelectedItems([]);
+      setSelectAll(false);
+      fetchData();
+      alert(`Opération par lot terminée: ${res.data.successful || res.data.deletedCount || 0} réussi(s)`);
+    } catch (error) {
+      alert(error.response?.data?.message || 'Erreur opération par lot');
+    }
+  };
+
+  // ═══════════════════════════════════════
+  // VALUE DASHBOARD
+  // ═══════════════════════════════════════
+  const fetchValueDashboard = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/food-stock/stats/value-dashboard`, getAuthHeaders());
+      setValueDashboard(res.data);
+    } catch (error) { console.error('Erreur dashboard valeur:', error); }
+  };
+
+  // ═══════════════════════════════════════
+  // REORDER SUGGESTIONS
+  // ═══════════════════════════════════════
+  const fetchReorderSuggestions = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/food-stock/reorder/suggestions`, getAuthHeaders());
+      setReorderData(res.data);
+    } catch (error) { console.error('Erreur suggestions:', error); }
+  };
+
+  // ═══════════════════════════════════════
+  // INVENTORY COUNT (جرد)
+  // ═══════════════════════════════════════
+  const openInventoryModal = () => {
+    setInventoryCounts(stockItems.map(item => ({
+      id: item._id,
+      nom: item.nom,
+      quantiteSysteme: item.quantite,
+      quantitePhysique: item.quantite,
+      unite: item.unite,
+      notes: ''
+    })));
+    setShowInventoryModal(true);
+  };
+  const handleInventorySubmit = async () => {
+    const changed = inventoryCounts.filter(c => c.quantitePhysique !== c.quantiteSysteme);
+    if (changed.length === 0) { alert('Aucune différence détectée'); return; }
+    try {
+      const res = await axios.post(`${API_URL}/food-stock/inventory/count`,
+        { counts: changed.map(c => ({ id: c.id, quantitePhysique: c.quantitePhysique, notes: c.notes })) },
+        getAuthHeaders()
+      );
+      setShowInventoryModal(false);
+      fetchData();
+      alert(`جرد terminé: ${res.data.summary.successful} articles mis à jour, ${res.data.summary.withDifference} avec différence`);
+    } catch (error) { alert('Erreur inventaire'); }
+  };
+
+  // ═══════════════════════════════════════
+  // IMPORT FROM EXCEL
+  // ═══════════════════════════════════════
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImportLoading(true);
+    try {
+      const wb = new ExcelJS.Workbook();
+      const buffer = await file.arrayBuffer();
+      await wb.xlsx.load(buffer);
+      const ws = wb.worksheets[0];
+      const rows = [];
+      ws.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // Skip header
+        const values = row.values;
+        rows.push({
+          nom: values[1] || '',
+          categorie: values[2] || 'autres',
+          quantite: Number(values[3]) || 0,
+          unite: values[4] || 'kg',
+          prix: Number(values[5]) || 0,
+          dateExpiration: values[6] ? new Date(values[6]).toISOString().split('T')[0] : '',
+          seuilCritique: Number(values[7]) || 5,
+          fournisseur: values[8] || '',
+          emplacement: values[9] || '',
+          barcode: values[10] || ''
+        });
+      });
+      setImportData(rows);
+      setShowImportModal(true);
+    } catch (error) {
+      alert('Erreur lecture du fichier Excel');
+    } finally {
+      setImportLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+  const handleImportSubmit = async () => {
+    if (importData.length === 0) return;
+    setImportLoading(true);
+    try {
+      const res = await axios.post(`${API_URL}/food-stock/batch/import`, { items: importData }, getAuthHeaders());
+      setShowImportModal(false);
+      setImportData([]);
+      fetchData();
+      alert(`Import terminé: ${res.data.summary.successful}/${res.data.summary.total} articles importés`);
+    } catch (error) { alert('Erreur import'); }
+    finally { setImportLoading(false); }
+  };
+  const downloadImportTemplate = async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Template Import');
+    ws.addRow(['Nom', 'Catégorie', 'Quantité', 'Unité', 'Prix', 'Date Expiration', 'Seuil Critique', 'Fournisseur', 'Emplacement', 'Code-barres']);
+    ws.getRow(1).font = { bold: true };
+    ws.addRow(['Exemple Riz', 'cereales-pains', 50, 'kg', 12, '2026-12-31', 10, 'Fournisseur A', 'Magasin 1', '']);
+    ws.columns = [{ width: 20 },{ width: 20 },{ width: 12 },{ width: 10 },{ width: 10 },{ width: 18 },{ width: 14 },{ width: 18 },{ width: 15 },{ width: 15 }];
+    const buffer = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), 'Template_Import_Stock.xlsx');
+  };
+
+  // ═══════════════════════════════════════
+  // SUPPLIERS
+  // ═══════════════════════════════════════
+  const fetchSuppliers = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/food-stock/suppliers/list`, getAuthHeaders());
+      setSuppliersData(res.data);
+    } catch (error) { console.error('Erreur fournisseurs:', error); }
+  };
+
+  // ═══════════════════════════════════════
+  // MEAL SUGGESTIONS
+  // ═══════════════════════════════════════
+  const fetchMealSuggestions = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/food-stock/meals/suggestions`, getAuthHeaders());
+      setMealData(res.data);
+    } catch (error) { console.error('Erreur suggestions repas:', error); }
+  };
+
+  // ═══════════════════════════════════════
+  // QR CODE
+  // ═══════════════════════════════════════
+  const openQRModal = (item) => { setQrItem(item); setShowQRModal(true); };
+  const generateQRDataURL = (text) => {
+    // Simple QR-like SVG data URL (for print labels)
+    const encoded = encodeURIComponent(text);
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}`;
+  };
+  const printQRLabel = (item) => {
+    const qrUrl = generateQRDataURL(`STOCK:${item._id}|${item.nom}|${item.barcode || ''}`);
+    const pw = window.open('', '_blank');
+    pw.document.write(`<!DOCTYPE html><html><head><title>QR Label</title>
+      <style>body{font-family:Arial;text-align:center;padding:20px;} .label{border:2px solid #333;border-radius:10px;padding:20px;display:inline-block;max-width:300px;}
+      .label img{width:180px;height:180px;} .name{font-size:18px;font-weight:bold;margin:10px 0;} .details{font-size:12px;color:#666;} @media print{body{margin:0;}}</style>
+      </head><body><div class="label"><img src="${qrUrl}" alt="QR"/><div class="name">${item.nom}</div>
+      <div class="details">${item.categorie} | ${item.quantite} ${item.unite}</div>
+      <div class="details">${item.barcode || 'N/A'} | Exp: ${item.dateExpiration ? new Date(item.dateExpiration).toLocaleDateString('fr-FR') : 'N/A'}</div>
+      </div><script>setTimeout(()=>window.print(),500)</script></body></html>`);
+    pw.document.close();
+  };
+
+  // ═══════════════════════════════════════
+  // EXPORT HISTORY TO EXCEL
+  // ═══════════════════════════════════════
+  const exportHistoryToExcel = async () => {
+    if (!globalHistory || globalHistory.history.length === 0) { alert('Pas de données à exporter'); return; }
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Historique Mouvements');
+    const hdr = ws.addRow(['Date', 'Produit', 'Catégorie', 'Action', 'Type Sortie', 'Quantité', 'Restant', 'Destination', 'Notes', 'Utilisateur']);
+    hdr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    hdr.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E7D32' } }; });
+    const actionLabelsExcel = { ajout: 'Ajout', consommation: 'Consommation', sortie: 'Sortie', modification: 'Modification', reapprovisionnement: 'Réappro.' };
+    globalHistory.history.forEach(h => {
+      ws.addRow([
+        new Date(h.date).toLocaleString('fr-FR'),
+        h.itemNom, h.itemCategorie,
+        actionLabelsExcel[h.action] || h.action,
+        h.typeSortie || '',
+        h.quantite, h.quantiteRestante,
+        h.destination || '', h.notes || '',
+        h.utilisateur ? h.utilisateur.name || h.utilisateur.email : ''
+      ]);
+    });
+    ws.columns = [{width:20},{width:20},{width:18},{width:15},{width:15},{width:12},{width:12},{width:18},{width:25},{width:18}];
+    const buffer = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Historique_Stock_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   // Charger données quand on change de tab
   useEffect(() => {
     if (activeTab === 'charts' && !chartData) fetchChartData();
     if (activeTab === 'calendar' && !calendarData) fetchCalendarData();
     if (activeTab === 'history') fetchGlobalHistory();
+    if (activeTab === 'dashboard' && !valueDashboard) fetchValueDashboard();
+    if (activeTab === 'reorder' && !reorderData) fetchReorderSuggestions();
+    if (activeTab === 'suppliers' && !suppliersData) fetchSuppliers();
+    if (activeTab === 'meals' && !mealData) fetchMealSuggestions();
   }, [activeTab]);
 
   // Helper pour les couleurs des graphiques
@@ -1137,13 +1392,23 @@ const FoodStockManagement = () => {
             📋 Fiche Inventaire
           </button>
           <button className="btn-export-excel" onClick={exportToExcel} title="Exporter en Excel">
-            📊 Exporter en Excel
+            📊 Exporter
+          </button>
+          <button className="btn-import" onClick={() => setShowImportModal(true)}>
+            📥 Importer Excel
+          </button>
+          <input type="file" ref={fileInputRef} accept=".xlsx,.xls" style={{display:'none'}} onChange={handleFileUpload} />
+          <button className="btn-template" onClick={downloadImportTemplate}>
+            📄 Template
+          </button>
+          <button className="btn-jard" onClick={openInventoryModal}>
+            📝 جرد / Inventaire
           </button>
           <button className="btn-scanner" onClick={() => setShowScanner(true)} disabled={scanLoading}>
-            {scanLoading ? '⏳ Recherche...' : '📷 Scanner Produit'}
+            {scanLoading ? '⏳ Recherche...' : '📷 Scanner'}
           </button>
           <button className="btn-add" onClick={() => setShowAddModal(true)}>
-            ➕ Ajouter un article
+            ➕ Ajouter
           </button>
         </div>
       </div>
@@ -1233,6 +1498,18 @@ const FoodStockManagement = () => {
         <button className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
           📤 الخروج والاستهلاك
         </button>
+        <button className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+          💰 القيمة
+        </button>
+        <button className={`tab-btn ${activeTab === 'reorder' ? 'active' : ''}`} onClick={() => setActiveTab('reorder')}>
+          🔄 إعادة التموين
+        </button>
+        <button className={`tab-btn ${activeTab === 'suppliers' ? 'active' : ''}`} onClick={() => setActiveTab('suppliers')}>
+          🏭 الموردون
+        </button>
+        <button className={`tab-btn ${activeTab === 'meals' ? 'active' : ''}`} onClick={() => setActiveTab('meals')}>
+          🍽️ الوجبات
+        </button>
         <button className={`tab-btn ${activeTab === 'charts' ? 'active' : ''}`} onClick={() => setActiveTab('charts')}>
           📊 Graphiques
         </button>
@@ -1281,11 +1558,23 @@ const FoodStockManagement = () => {
         />
       </div>
 
+      {/* Batch Toolbar */}
+      {selectedItems.length > 0 && (
+        <div className="batch-toolbar">
+          <span className="batch-count">{selectedItems.length} عنصر محدد</span>
+          <button className="batch-btn consume" onClick={() => openBatchModal('consume')}>🍽️ استهلاك الكل</button>
+          <button className="batch-btn sortie" onClick={() => openBatchModal('sortie')}>📤 خروج الكل</button>
+          <button className="batch-btn delete" onClick={() => openBatchModal('delete')}>🗑️ حذف الكل</button>
+          <button className="batch-btn cancel" onClick={() => { setSelectedItems([]); setSelectAll(false); }}>✕ إلغاء</button>
+        </div>
+      )}
+
       {/* Table des articles */}
       <div className="stock-table-container">
         <table className="stock-table">
           <thead>
             <tr>
+              <th style={{width:'40px'}}><input type="checkbox" checked={selectAll} onChange={toggleSelectAll} /></th>
               <th>Nom</th>
               <th>Catégorie</th>
               <th>Quantité</th>
@@ -1304,7 +1593,8 @@ const FoodStockManagement = () => {
               const catInfo = categories.find(c => c.value === item.categorie);
               
               return (
-                <tr key={item._id}>
+                <tr key={item._id} className={selectedItems.includes(item._id) ? 'row-selected' : ''}>
+                  <td><input type="checkbox" checked={selectedItems.includes(item._id)} onChange={() => toggleSelectItem(item._id)} /></td>
                   <td data-label="Nom">
                     <strong>{catInfo?.icon} {item.nom}</strong>
                     {item.emplacement && <div className="sub-text">{item.emplacement}</div>}
@@ -1376,6 +1666,13 @@ const FoodStockManagement = () => {
                         title="Historique"
                       >
                         📜
+                      </button>
+                      <button 
+                        className="btn-action qr"
+                        onClick={() => openQRModal(item)}
+                        title="QR Code"
+                      >
+                        📱
                       </button>
                     </div>
                   </td>
@@ -1581,6 +1878,7 @@ const FoodStockManagement = () => {
               setHistoryFilters(resetF);
               fetchGlobalHistory(resetF);
             }}>🔄 إعادة</button>
+            <button className="hfilter-export-btn" onClick={exportHistoryToExcel}>📊 تصدير Excel</button>
           </div>
 
           {/* History Table */}
@@ -1900,6 +2198,248 @@ const FoodStockManagement = () => {
                         </div>
                       );
                     })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* TAB: Value Dashboard / لوحة القيمة     */}
+      {/* ═══════════════════════════════════════ */}
+      {activeTab === 'dashboard' && (
+        <div className="value-dashboard">
+          {!valueDashboard ? (
+            <div className="loading-spinner" style={{minHeight:'200px'}}>جاري التحميل...</div>
+          ) : (
+            <>
+              <div className="dashboard-cards">
+                <div className="dash-card primary">
+                  <div className="dash-icon">💰</div>
+                  <div className="dash-info">
+                    <span className="dash-value">{valueDashboard.currentValue?.toFixed(2)} DH</span>
+                    <span className="dash-label">القيمة الحالية / Valeur Actuelle</span>
+                  </div>
+                </div>
+                <div className="dash-card success">
+                  <div className="dash-icon">🍽️</div>
+                  <div className="dash-info">
+                    <span className="dash-value">{valueDashboard.consumed?.totalQuantite?.toFixed(1)} u.</span>
+                    <span className="dash-label">مستهلك / Consommé ({valueDashboard.consumed?.count}x)</span>
+                  </div>
+                </div>
+                <div className="dash-card danger">
+                  <div className="dash-icon">💔</div>
+                  <div className="dash-info">
+                    <span className="dash-value">{valueDashboard.lost?.totalQuantite?.toFixed(1)} u.</span>
+                    <span className="dash-label">خسائر / Pertes ({valueDashboard.lost?.count}x)</span>
+                  </div>
+                </div>
+                <div className="dash-card info">
+                  <div className="dash-icon">🎁</div>
+                  <div className="dash-info">
+                    <span className="dash-value">{valueDashboard.donated?.totalQuantite?.toFixed(1)} u.</span>
+                    <span className="dash-label">تبرعات / Dons ({valueDashboard.donated?.count}x)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="dashboard-section">
+                <h3>📊 مقارنة المخزون / Comparaison Stock</h3>
+                <div className="stock-comparison">
+                  <div className="comp-bar">
+                    <div className="comp-fill" style={{width: `${valueDashboard.stockComparison?.initial ? (valueDashboard.stockComparison.current / valueDashboard.stockComparison.initial * 100) : 0}%`}}></div>
+                  </div>
+                  <div className="comp-labels">
+                    <span>الأولي: {valueDashboard.stockComparison?.initial?.toFixed(0)}</span>
+                    <span>الحالي: {valueDashboard.stockComparison?.current?.toFixed(0)}</span>
+                    <span>مستهلك: {valueDashboard.stockComparison?.consumed?.toFixed(0)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="dashboard-section">
+                <h3>📦 القيمة حسب الفئة / Valeur par Catégorie</h3>
+                <div className="value-by-cat">
+                  {(valueDashboard.valueByCategory || []).map((cat, i) => (
+                    <div key={i} className="cat-value-item">
+                      <span className="cat-name">{categoryLabels[cat._id] || cat._id}</span>
+                      <span className="cat-count">{cat.count} articles</span>
+                      <span className="cat-valeur">{cat.valeur?.toFixed(2)} DH</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {valueDashboard.monthlySpending?.length > 0 && (
+                <div className="dashboard-section">
+                  <h3>📈 الإنفاق الشهري / Dépenses Mensuelles</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={valueDashboard.monthlySpending.map(m => ({
+                      mois: `${m._id.month}/${m._id.year}`,
+                      valeur: m.valeur,
+                      articles: m.count
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="mois" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="valeur" fill="#667eea" name="Valeur (DH)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* TAB: Reorder / إعادة التموين           */}
+      {/* ═══════════════════════════════════════ */}
+      {activeTab === 'reorder' && (
+        <div className="reorder-container">
+          {!reorderData ? (
+            <div className="loading-spinner" style={{minHeight:'200px'}}>جاري التحميل...</div>
+          ) : reorderData.suggestions.length === 0 ? (
+            <div className="empty-state"><p>✅ لا توجد مقترحات إعادة التموين / Aucune suggestion</p></div>
+          ) : (
+            <>
+              <div className="reorder-summary">
+                <div className="reorder-stat urgent"><span className="rs-value">{reorderData.summary.urgent}</span><span className="rs-label">🔴 عاجل</span></div>
+                <div className="reorder-stat high"><span className="rs-value">{reorderData.summary.high}</span><span className="rs-label">🟠 مرتفع</span></div>
+                <div className="reorder-stat medium"><span className="rs-value">{reorderData.summary.medium}</span><span className="rs-label">🟡 متوسط</span></div>
+                <div className="reorder-stat cost"><span className="rs-value">{reorderData.summary.totalCost?.toFixed(2)} DH</span><span className="rs-label">💰 التكلفة المقدرة</span></div>
+              </div>
+
+              <div className="reorder-table-wrapper">
+                <table className="stock-table reorder-table">
+                  <thead>
+                    <tr>
+                      <th>الأولوية</th>
+                      <th>المنتج</th>
+                      <th>الحالي</th>
+                      <th>الحد الأدنى</th>
+                      <th>الكمية الموصى بها</th>
+                      <th>التكلفة المقدرة</th>
+                      <th>المورد</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reorderData.suggestions.map((s, i) => (
+                      <tr key={i} className={`urgency-${s.urgency}`}>
+                        <td><span className={`urgency-badge ${s.urgency}`}>
+                          {s.urgency === 'urgent' ? '🔴 عاجل' : s.urgency === 'high' ? '🟠 مرتفع' : '🟡 متوسط'}
+                        </span></td>
+                        <td><strong>{s.nom}</strong><div className="sub-text">{categoryLabels[s.categorie] || s.categorie}</div></td>
+                        <td className="qty-low">{s.quantiteActuelle} {s.unite}</td>
+                        <td>{s.seuilCritique} {s.unite}</td>
+                        <td className="qty-recommend"><strong>{s.quantiteRecommandee?.toFixed(0)}</strong> {s.unite}</td>
+                        <td className="cost-cell">{s.coutEstime?.toFixed(2)} DH</td>
+                        <td>{s.fournisseur || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* TAB: Suppliers / الموردون              */}
+      {/* ═══════════════════════════════════════ */}
+      {activeTab === 'suppliers' && (
+        <div className="suppliers-container">
+          {!suppliersData ? (
+            <div className="loading-spinner" style={{minHeight:'200px'}}>جاري التحميل...</div>
+          ) : suppliersData.suppliers.length === 0 ? (
+            <div className="empty-state"><p>لا يوجد موردون / Aucun fournisseur</p></div>
+          ) : (
+            <div className="suppliers-grid">
+              {suppliersData.suppliers.map((sup, i) => (
+                <div key={i} className="supplier-card">
+                  <div className="supplier-header">
+                    <h3>🏭 {sup._id}</h3>
+                    <span className="supplier-value">{sup.totalValeur?.toFixed(2)} DH</span>
+                  </div>
+                  <div className="supplier-stats">
+                    <span>📦 {sup.totalArticles} articles</span>
+                    <span>📂 {(sup.categories || []).map(c => categoryLabels[c] || c).join(', ')}</span>
+                  </div>
+                  <div className="supplier-items">
+                    {(sup.articles || []).slice(0, 5).map((a, j) => (
+                      <div key={j} className="supplier-item">
+                        <span>{a.nom}</span>
+                        <span>{a.quantite} {a.unite} — {a.prix} DH</span>
+                      </div>
+                    ))}
+                    {sup.articles?.length > 5 && <div className="supplier-more">+{sup.articles.length - 5} more</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* TAB: Meals / الوجبات                   */}
+      {/* ═══════════════════════════════════════ */}
+      {activeTab === 'meals' && (
+        <div className="meals-container">
+          {!mealData ? (
+            <div className="loading-spinner" style={{minHeight:'200px'}}>جاري التحميل...</div>
+          ) : (
+            <>
+              {mealData.expiringSoon?.length > 0 && (
+                <div className="meals-alert">
+                  <h3>⚠️ أولوية الاستخدام / Priorité d'utilisation ({mealData.expiringSoon.length} articles expirent bientôt)</h3>
+                  <div className="expiring-chips">
+                    {mealData.expiringSoon.map((item, i) => (
+                      <span key={i} className="expiring-chip">
+                        {item.nom} — {item.quantite} {item.unite} (exp: {new Date(item.dateExpiration).toLocaleDateString('fr-FR')})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="meal-suggestions-grid">
+                {(mealData.mealSuggestions || []).map((meal, i) => (
+                  <div key={i} className={`meal-card priority-${meal.priority}`}>
+                    <h3>{meal.name}</h3>
+                    <p className="meal-desc">{meal.description}</p>
+                    <div className="meal-ingredients">
+                      <h4>المكونات / Ingrédients:</h4>
+                      {(meal.ingredients || []).map((ing, j) => (
+                        <div key={j} className="meal-ingredient">
+                          <span>{ing.nom}</span>
+                          <span>{ing.quantite} {ing.unite}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {meal.servings > 0 && <div className="meal-servings">🍽️ ~{meal.servings} portions</div>}
+                  </div>
+                ))}
+              </div>
+
+              <div className="available-by-cat">
+                <h3>📦 المتوفر حسب الفئة / Disponible par catégorie</h3>
+                <div className="cat-available-grid">
+                  {(mealData.availableByCategory || []).map((cat, i) => (
+                    <div key={i} className="cat-available-card">
+                      <h4>{categoryLabels[cat.categorie] || cat.categorie}</h4>
+                      <span className="cat-count-badge">{cat.count} articles</span>
+                      <div className="cat-items-list">
+                        {(cat.items || []).map((item, j) => (
+                          <span key={j} className="cat-item-chip">{item.nom} ({item.quantite} {item.unite})</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </>
@@ -2530,6 +3070,244 @@ const FoodStockManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* Modal: Batch Operations                */}
+      {/* ═══════════════════════════════════════ */}
+      {showBatchModal && (
+        <div className="modal-overlay" onClick={() => setShowBatchModal(false)}>
+          <div className="modal-content batch-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                {batchAction === 'consume' && '🍽️ استهلاك جماعي / Consommation par lot'}
+                {batchAction === 'sortie' && '📤 خروج جماعي / Sortie par lot'}
+                {batchAction === 'delete' && '🗑️ حذف جماعي / Suppression par lot'}
+              </h2>
+              <button className="close-btn" onClick={() => setShowBatchModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p className="batch-count">
+                {selectedItems.length} منتج(ات) محدد(ة) / {selectedItems.length} article(s) sélectionné(s)
+              </p>
+              <ul className="batch-items-list">
+                {stockItems.filter(s => selectedItems.includes(s._id)).map(s => (
+                  <li key={s._id}>{s.nom} — {s.quantite} {s.unite}</li>
+                ))}
+              </ul>
+
+              {batchAction === 'sortie' && (
+                <div className="batch-sortie-form">
+                  <div className="form-group">
+                    <label>نوع الخروج / Type de sortie</label>
+                    <select value={batchSortieData.typeSortie} onChange={e => setBatchSortieData({...batchSortieData, typeSortie: e.target.value})}>
+                      <option value="don">🎁 تبرع / Don</option>
+                      <option value="transfert">🔄 تحويل / Transfert</option>
+                      <option value="perte">💔 خسارة / Perte</option>
+                      <option value="expire_jete">🗑️ منتهي الصلاحية / Expiré/Jeté</option>
+                      <option value="retour_fournisseur">↩️ إرجاع / Retour Fournisseur</option>
+                      <option value="autre">📋 آخر / Autre</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>الوجهة / Destination</label>
+                    <input type="text" value={batchSortieData.destination} onChange={e => setBatchSortieData({...batchSortieData, destination: e.target.value})} placeholder="الوجهة..."/>
+                  </div>
+                  <div className="form-group">
+                    <label>السبب / Raison</label>
+                    <textarea value={batchSortieData.raison} onChange={e => setBatchSortieData({...batchSortieData, raison: e.target.value})} placeholder="السبب..." rows={2}/>
+                  </div>
+                </div>
+              )}
+
+              {batchAction === 'delete' && (
+                <div className="batch-warning">
+                  ⚠️ هذا الإجراء لا يمكن التراجع عنه / Cette action est irréversible!
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setShowBatchModal(false)}>إلغاء / Annuler</button>
+              <button className={`btn-confirm ${batchAction === 'delete' ? 'btn-danger' : 'btn-primary'}`} onClick={handleBatchAction}>
+                {batchAction === 'consume' && '✅ تأكيد الاستهلاك'}
+                {batchAction === 'sortie' && '📤 تأكيد الخروج'}
+                {batchAction === 'delete' && '🗑️ تأكيد الحذف'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* Modal: Inventory Count / الجرد         */}
+      {/* ═══════════════════════════════════════ */}
+      {showInventoryModal && (
+        <div className="modal-overlay" onClick={() => setShowInventoryModal(false)}>
+          <div className="modal-content inventory-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>📋 جرد المخزون / Inventaire du Stock</h2>
+              <button className="close-btn" onClick={() => setShowInventoryModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p className="inventory-info">أدخل الكميات الفعلية لكل منتج / Saisissez les quantités réelles</p>
+              <div className="inventory-table-wrapper">
+                <table className="stock-table inventory-table">
+                  <thead>
+                    <tr>
+                      <th>المنتج</th>
+                      <th>الكمية في النظام</th>
+                      <th>الكمية الفعلية</th>
+                      <th>الفرق</th>
+                      <th>ملاحظة</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stockItems.map(item => {
+                      const inv = inventoryCounts[item._id] || {};
+                      const physQty = inv.quantitePhysique !== undefined ? inv.quantitePhysique : item.quantite;
+                      const diff = physQty - item.quantite;
+                      return (
+                        <tr key={item._id} className={diff !== 0 ? 'inv-diff' : ''}>
+                          <td><strong>{item.nom}</strong></td>
+                          <td>{item.quantite} {item.unite}</td>
+                          <td>
+                            <input type="number" step="0.1" min="0" className="inv-qty-input"
+                              value={physQty}
+                              onChange={e => setInventoryCounts({
+                                ...inventoryCounts,
+                                [item._id]: { ...inv, quantitePhysique: parseFloat(e.target.value) || 0, notes: inv.notes || '' }
+                              })}
+                            />
+                          </td>
+                          <td className={diff > 0 ? 'diff-pos' : diff < 0 ? 'diff-neg' : 'diff-zero'}>
+                            {diff > 0 ? '+' : ''}{diff.toFixed(1)}
+                          </td>
+                          <td>
+                            <input type="text" className="inv-note-input" placeholder="ملاحظة..."
+                              value={inv.notes || ''}
+                              onChange={e => setInventoryCounts({
+                                ...inventoryCounts,
+                                [item._id]: { ...inv, quantitePhysique: physQty, notes: e.target.value }
+                              })}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setShowInventoryModal(false)}>إلغاء</button>
+              <button className="btn-confirm btn-primary" onClick={handleInventorySubmit}>✅ تأكيد الجرد / Valider l'inventaire</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* Modal: Import from Excel               */}
+      {/* ═══════════════════════════════════════ */}
+      {showImportModal && (
+        <div className="modal-overlay" onClick={() => setShowImportModal(false)}>
+          <div className="modal-content import-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>📥 استيراد من Excel / Importer depuis Excel</h2>
+              <button className="close-btn" onClick={() => setShowImportModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="import-actions">
+                <button className="btn-template" onClick={downloadImportTemplate}>
+                  📄 تحميل نموذج / Télécharger le modèle
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".xlsx,.xls"
+                  onChange={handleFileUpload}
+                  style={{display: 'none'}}
+                />
+                <button className="btn-upload" onClick={() => fileInputRef.current?.click()}>
+                  📂 اختيار ملف / Choisir un fichier
+                </button>
+              </div>
+
+              {importData.length > 0 && (
+                <>
+                  <p className="import-preview-count">{importData.length} منتج(ات) للاستيراد / article(s) à importer</p>
+                  <div className="import-table-wrapper">
+                    <table className="stock-table import-table">
+                      <thead>
+                        <tr>
+                          <th>الاسم</th>
+                          <th>الفئة</th>
+                          <th>الكمية</th>
+                          <th>الوحدة</th>
+                          <th>السعر</th>
+                          <th>المورد</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importData.slice(0, 20).map((item, i) => (
+                          <tr key={i}>
+                            <td>{item.nom}</td>
+                            <td>{categoryLabels[item.categorie] || item.categorie}</td>
+                            <td>{item.quantite}</td>
+                            <td>{item.unite}</td>
+                            <td>{item.prix} DH</td>
+                            <td>{item.fournisseur || '—'}</td>
+                          </tr>
+                        ))}
+                        {importData.length > 20 && (
+                          <tr><td colSpan="6" className="more-rows">... و {importData.length - 20} آخرون</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => { setShowImportModal(false); setImportData([]); }}>إلغاء</button>
+              <button className="btn-confirm btn-primary" onClick={handleImportSubmit} disabled={importData.length === 0 || importLoading}>
+                {importLoading ? 'جاري الاستيراد...' : `📥 استيراد ${importData.length} منتج`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* Modal: QR Code                         */}
+      {/* ═══════════════════════════════════════ */}
+      {showQRModal && qrItem && (
+        <div className="modal-overlay" onClick={() => setShowQRModal(false)}>
+          <div className="modal-content qr-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>📱 رمز QR / Code QR</h2>
+              <button className="close-btn" onClick={() => setShowQRModal(false)}>✕</button>
+            </div>
+            <div className="modal-body qr-body">
+              <div className="qr-item-info">
+                <h3>{qrItem.nom}</h3>
+                <p>{categoryLabels[qrItem.categorie] || qrItem.categorie} — {qrItem.quantite} {qrItem.unite}</p>
+                {qrItem.barcode && <p>الباركود: {qrItem.barcode}</p>}
+              </div>
+              <div className="qr-code-container" id="qr-print-area">
+                <img src={generateQRDataURL(`STOCK:${qrItem._id}|${qrItem.nom}|${qrItem.barcode || ''}`)} alt="QR Code" className="qr-code-img" />
+                <p className="qr-label">{qrItem.nom}</p>
+                {qrItem.barcode && <p className="qr-barcode">{qrItem.barcode}</p>}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setShowQRModal(false)}>إغلاق</button>
+              <button className="btn-confirm btn-primary" onClick={() => printQRLabel(qrItem)}>
+                🖨️ طباعة الملصق / Imprimer l'étiquette
+              </button>
+            </div>
           </div>
         </div>
       )}

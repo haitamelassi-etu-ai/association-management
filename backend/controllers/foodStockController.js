@@ -652,3 +652,459 @@ exports.getPlanConsommation = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: error.message });
   }
 };
+
+// ═══════════════════════════════════════════════════════
+// STOCK VALUE DASHBOARD
+// ═══════════════════════════════════════════════════════
+exports.getValueDashboard = async (req, res) => {
+  try {
+    // Total current value
+    const currentValue = await FoodStock.aggregate([
+      { $group: { _id: null, total: { $sum: { $multiply: ['$quantite', '$prix'] } }, totalItems: { $sum: 1 } } }
+    ]);
+
+    // Value by status
+    const valueByStatus = await FoodStock.aggregate([
+      { $group: { _id: '$statut', valeur: { $sum: { $multiply: ['$quantite', '$prix'] } }, count: { $sum: 1 } } }
+    ]);
+
+    // Value by category
+    const valueByCategory = await FoodStock.aggregate([
+      { $group: { _id: '$categorie', valeur: { $sum: { $multiply: ['$quantite', '$prix'] } }, count: { $sum: 1 }, quantiteTotale: { $sum: '$quantite' } } },
+      { $sort: { valeur: -1 } }
+    ]);
+
+    // Value consumed (from history)
+    const consumed = await FoodStock.aggregate([
+      { $unwind: '$historique' },
+      { $match: { 'historique.action': 'consommation' } },
+      { $lookup: { from: 'foodstocks', localField: '_id', foreignField: '_id', as: 'item' } },
+      { $group: { _id: null, totalQuantite: { $sum: '$historique.quantite' }, count: { $sum: 1 } } }
+    ]);
+
+    // Value lost (sortie type perte + expire_jete)
+    const lost = await FoodStock.aggregate([
+      { $unwind: '$historique' },
+      { $match: { 'historique.action': 'sortie', 'historique.typeSortie': { $in: ['perte', 'expire_jete'] } } },
+      { $group: { _id: null, totalQuantite: { $sum: '$historique.quantite' }, count: { $sum: 1 } } }
+    ]);
+
+    // Value donated
+    const donated = await FoodStock.aggregate([
+      { $unwind: '$historique' },
+      { $match: { 'historique.action': 'sortie', 'historique.typeSortie': 'don' } },
+      { $group: { _id: null, totalQuantite: { $sum: '$historique.quantite' }, count: { $sum: 1 } } }
+    ]);
+
+    // Initial vs current stock comparison
+    const stockComparison = await FoodStock.aggregate([
+      { $group: { _id: null, totalInitial: { $sum: '$quantiteInitiale' }, totalCurrent: { $sum: '$quantite' } } }
+    ]);
+
+    // Monthly spending trend
+    const monthlySpending = await FoodStock.aggregate([
+      { $group: {
+        _id: { year: { $year: '$dateAchat' }, month: { $month: '$dateAchat' } },
+        valeur: { $sum: { $multiply: ['$quantiteInitiale', '$prix'] } },
+        count: { $sum: 1 }
+      }},
+      { $sort: { '_id.year': -1, '_id.month': -1 } },
+      { $limit: 12 }
+    ]);
+
+    res.json({
+      currentValue: currentValue[0]?.total || 0,
+      totalItems: currentValue[0]?.totalItems || 0,
+      valueByStatus,
+      valueByCategory,
+      consumed: { totalQuantite: consumed[0]?.totalQuantite || 0, count: consumed[0]?.count || 0 },
+      lost: { totalQuantite: lost[0]?.totalQuantite || 0, count: lost[0]?.count || 0 },
+      donated: { totalQuantite: donated[0]?.totalQuantite || 0, count: donated[0]?.count || 0 },
+      stockComparison: {
+        initial: stockComparison[0]?.totalInitial || 0,
+        current: stockComparison[0]?.totalCurrent || 0,
+        consumed: (stockComparison[0]?.totalInitial || 0) - (stockComparison[0]?.totalCurrent || 0)
+      },
+      monthlySpending: monthlySpending.reverse()
+    });
+  } catch (error) {
+    console.error('Erreur dashboard valeur:', error);
+    res.status(500).json({ message: 'Erreur serveur', error: error.message });
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+// LOW STOCK / REORDER SUGGESTIONS
+// ═══════════════════════════════════════════════════════
+exports.getReorderSuggestions = async (req, res) => {
+  try {
+    // Items below or at critical threshold
+    const lowStockItems = await FoodStock.find({
+      $or: [
+        { statut: 'critique' },
+        { statut: 'faible' },
+        { $expr: { $lte: ['$quantite', '$seuilCritique'] } }
+      ]
+    }).sort({ quantite: 1 });
+
+    // Calculate recommended reorder quantities
+    const suggestions = lowStockItems.map(item => {
+      const deficit = item.quantiteInitiale - item.quantite;
+      const recommendedQty = Math.max(item.quantiteInitiale, item.seuilCritique * 3);
+      const urgency = item.quantite === 0 ? 'urgent' : item.quantite <= item.seuilCritique ? 'high' : 'medium';
+      return {
+        _id: item._id,
+        nom: item.nom,
+        categorie: item.categorie,
+        quantiteActuelle: item.quantite,
+        unite: item.unite,
+        seuilCritique: item.seuilCritique,
+        quantiteInitiale: item.quantiteInitiale,
+        quantiteRecommandee: recommendedQty - item.quantite,
+        coutEstime: (recommendedQty - item.quantite) * item.prix,
+        prix: item.prix,
+        fournisseur: item.fournisseur,
+        urgency,
+        joursRestants: item.dateExpiration ? Math.ceil((new Date(item.dateExpiration) - new Date()) / (1000 * 60 * 60 * 24)) : null
+      };
+    });
+
+    // Group by urgency
+    const urgent = suggestions.filter(s => s.urgency === 'urgent');
+    const high = suggestions.filter(s => s.urgency === 'high');
+    const medium = suggestions.filter(s => s.urgency === 'medium');
+
+    // Total estimated cost
+    const totalCost = suggestions.reduce((sum, s) => sum + s.coutEstime, 0);
+
+    res.json({
+      suggestions,
+      summary: {
+        total: suggestions.length,
+        urgent: urgent.length,
+        high: high.length,
+        medium: medium.length,
+        totalCost
+      }
+    });
+  } catch (error) {
+    console.error('Erreur suggestions réapprovisionnement:', error);
+    res.status(500).json({ message: 'Erreur serveur', error: error.message });
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+// BATCH OPERATIONS
+// ═══════════════════════════════════════════════════════
+exports.batchConsume = async (req, res) => {
+  try {
+    const { items } = req.body; // [{ id, quantite, raison }]
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'Liste d\'articles requise' });
+    }
+
+    const results = [];
+    for (const entry of items) {
+      try {
+        const item = await FoodStock.findById(entry.id);
+        if (!item) { results.push({ id: entry.id, success: false, error: 'Non trouvé' }); continue; }
+        if (entry.quantite > item.quantite) { results.push({ id: entry.id, nom: item.nom, success: false, error: 'Quantité insuffisante' }); continue; }
+        item.enregistrerConsommation(entry.quantite, req.user.id, entry.raison || 'Consommation par lot');
+        await item.save();
+        results.push({ id: entry.id, nom: item.nom, success: true, quantiteRestante: item.quantite });
+      } catch (err) {
+        results.push({ id: entry.id, success: false, error: err.message });
+      }
+    }
+
+    res.json({ results, totalProcessed: items.length, successful: results.filter(r => r.success).length });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur opération par lot', error: error.message });
+  }
+};
+
+exports.batchSortie = async (req, res) => {
+  try {
+    const { items, typeSortie, destination, raison } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'Liste d\'articles requise' });
+    }
+
+    const results = [];
+    for (const entry of items) {
+      try {
+        const item = await FoodStock.findById(entry.id);
+        if (!item) { results.push({ id: entry.id, success: false, error: 'Non trouvé' }); continue; }
+        if (entry.quantite > item.quantite) { results.push({ id: entry.id, nom: item.nom, success: false, error: 'Quantité insuffisante' }); continue; }
+        item.enregistrerSortie(entry.quantite, req.user.id, typeSortie || entry.typeSortie || 'autre', destination || entry.destination || '', raison || entry.raison || '');
+        await item.save();
+        results.push({ id: entry.id, nom: item.nom, success: true, quantiteRestante: item.quantite });
+      } catch (err) {
+        results.push({ id: entry.id, success: false, error: err.message });
+      }
+    }
+
+    res.json({ results, totalProcessed: items.length, successful: results.filter(r => r.success).length });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur opération par lot', error: error.message });
+  }
+};
+
+exports.batchDelete = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'Liste d\'IDs requise' });
+    }
+    const result = await FoodStock.deleteMany({ _id: { $in: ids } });
+    res.json({ deletedCount: result.deletedCount, requested: ids.length });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur suppression par lot', error: error.message });
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+// INVENTORY COUNT (جرد)
+// ═══════════════════════════════════════════════════════
+exports.performInventoryCount = async (req, res) => {
+  try {
+    const { counts } = req.body; // [{ id, quantitePhysique, notes }]
+    if (!counts || !Array.isArray(counts) || counts.length === 0) {
+      return res.status(400).json({ message: 'Liste de comptage requise' });
+    }
+
+    const results = [];
+    for (const entry of counts) {
+      try {
+        const item = await FoodStock.findById(entry.id);
+        if (!item) { results.push({ id: entry.id, success: false, error: 'Non trouvé' }); continue; }
+
+        const difference = entry.quantitePhysique - item.quantite;
+        const oldQty = item.quantite;
+        item.quantite = entry.quantitePhysique;
+
+        item.historique.push({
+          action: 'modification',
+          quantite: Math.abs(difference),
+          quantiteRestante: entry.quantitePhysique,
+          utilisateur: req.user.id,
+          notes: `جرد/Inventaire: ${oldQty} → ${entry.quantitePhysique} (${difference > 0 ? '+' : ''}${difference})${entry.notes ? ' | ' + entry.notes : ''}`
+        });
+
+        await item.save();
+        results.push({
+          id: entry.id,
+          nom: item.nom,
+          success: true,
+          ancienneQuantite: oldQty,
+          nouvelleQuantite: entry.quantitePhysique,
+          difference
+        });
+      } catch (err) {
+        results.push({ id: entry.id, success: false, error: err.message });
+      }
+    }
+
+    const totalDiffPositive = results.filter(r => r.success && r.difference > 0).reduce((s, r) => s + r.difference, 0);
+    const totalDiffNegative = results.filter(r => r.success && r.difference < 0).reduce((s, r) => s + Math.abs(r.difference), 0);
+
+    res.json({
+      results,
+      summary: {
+        total: counts.length,
+        successful: results.filter(r => r.success).length,
+        withDifference: results.filter(r => r.success && r.difference !== 0).length,
+        totalExcess: totalDiffPositive,
+        totalDeficit: totalDiffNegative
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur inventaire', error: error.message });
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+// IMPORT FROM EXCEL
+// ═══════════════════════════════════════════════════════
+exports.bulkImport = async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'Liste d\'articles requise' });
+    }
+
+    const results = [];
+    for (const entry of items) {
+      try {
+        // Validate required fields
+        if (!entry.nom || !entry.categorie || !entry.quantite || !entry.unite || !entry.prix || !entry.dateExpiration || !entry.seuilCritique) {
+          results.push({ nom: entry.nom || 'Inconnu', success: false, error: 'Champs obligatoires manquants' });
+          continue;
+        }
+
+        const itemData = {
+          nom: entry.nom,
+          categorie: entry.categorie,
+          quantite: Number(entry.quantite),
+          quantiteInitiale: Number(entry.quantite),
+          unite: entry.unite,
+          prix: Number(entry.prix),
+          dateAchat: entry.dateAchat ? new Date(entry.dateAchat) : new Date(),
+          dateExpiration: new Date(entry.dateExpiration),
+          seuilCritique: Number(entry.seuilCritique),
+          fournisseur: entry.fournisseur || '',
+          emplacement: entry.emplacement || '',
+          notes: entry.notes || '',
+          barcode: entry.barcode || undefined,
+          historique: [{
+            action: 'ajout',
+            quantite: Number(entry.quantite),
+            quantiteRestante: Number(entry.quantite),
+            utilisateur: req.user.id,
+            notes: 'Import Excel'
+          }]
+        };
+
+        // Remove barcode if empty to avoid unique constraint
+        if (!itemData.barcode) delete itemData.barcode;
+
+        const newItem = new FoodStock(itemData);
+        await newItem.save();
+        results.push({ nom: entry.nom, success: true, id: newItem._id });
+      } catch (err) {
+        results.push({ nom: entry.nom || 'Inconnu', success: false, error: err.message });
+      }
+    }
+
+    res.json({
+      results,
+      summary: {
+        total: items.length,
+        successful: results.filter(r => r.success).length,
+        failed: results.filter(r => !r.success).length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur import', error: error.message });
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+// SUPPLIER LIST
+// ═══════════════════════════════════════════════════════
+exports.getSuppliers = async (req, res) => {
+  try {
+    const suppliers = await FoodStock.aggregate([
+      { $match: { fournisseur: { $exists: true, $ne: '' } } },
+      { $group: {
+        _id: '$fournisseur',
+        totalArticles: { $sum: 1 },
+        totalValeur: { $sum: { $multiply: ['$quantite', '$prix'] } },
+        categories: { $addToSet: '$categorie' },
+        articles: { $push: { nom: '$nom', quantite: '$quantite', unite: '$unite', prix: '$prix' } }
+      }},
+      { $sort: { totalValeur: -1 } }
+    ]);
+
+    res.json({ suppliers });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur fournisseurs', error: error.message });
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+// MEAL LINKING / RECIPES
+// ═══════════════════════════════════════════════════════
+exports.getMealSuggestions = async (req, res) => {
+  try {
+    // Get available items grouped by category
+    const available = await FoodStock.find({ statut: { $ne: 'expire' }, quantite: { $gt: 0 } })
+      .select('nom categorie quantite unite dateExpiration prix')
+      .sort({ dateExpiration: 1 });
+
+    // Group by category
+    const byCategory = {};
+    available.forEach(item => {
+      if (!byCategory[item.categorie]) byCategory[item.categorie] = [];
+      byCategory[item.categorie].push(item);
+    });
+
+    // Items expiring soon (priority to use)
+    const expiringSoon = available.filter(item => {
+      const days = Math.ceil((new Date(item.dateExpiration) - new Date()) / (1000 * 60 * 60 * 24));
+      return days > 0 && days <= 7;
+    });
+
+    // Build simple meal suggestions based on available categories
+    const mealSuggestions = [];
+
+    const hasProteins = byCategory['viandes-poissons']?.length > 0;
+    const hasVeggies = byCategory['fruits-legumes']?.length > 0;
+    const hasDairy = byCategory['produits-laitiers']?.length > 0;
+    const hasGrains = byCategory['cereales-pains']?.length > 0;
+    const hasCanned = byCategory['conserves']?.length > 0;
+    const hasDrinks = byCategory['boissons']?.length > 0;
+
+    if (hasProteins && hasVeggies && hasGrains) {
+      mealSuggestions.push({
+        name: '🍽️ وجبة كاملة / Repas Complet',
+        description: 'Protéines + Légumes + Céréales',
+        ingredients: [
+          ...(byCategory['viandes-poissons'] || []).slice(0, 2),
+          ...(byCategory['fruits-legumes'] || []).slice(0, 3),
+          ...(byCategory['cereales-pains'] || []).slice(0, 1)
+        ],
+        servings: Math.min(
+          ...[(byCategory['viandes-poissons']?.[0]?.quantite || 0), (byCategory['fruits-legumes']?.[0]?.quantite || 0)].filter(q => q > 0)
+        ),
+        priority: expiringSoon.length > 0 ? 'high' : 'normal'
+      });
+    }
+
+    if (hasVeggies) {
+      mealSuggestions.push({
+        name: '🥗 سلطة / Salade',
+        description: 'Légumes frais disponibles',
+        ingredients: (byCategory['fruits-legumes'] || []).slice(0, 5),
+        servings: Math.floor((byCategory['fruits-legumes']?.[0]?.quantite || 0) / 0.3),
+        priority: 'normal'
+      });
+    }
+
+    if (hasDairy && hasGrains) {
+      mealSuggestions.push({
+        name: '🥞 فطور / Petit-déjeuner',
+        description: 'Produits laitiers + Céréales',
+        ingredients: [
+          ...(byCategory['produits-laitiers'] || []).slice(0, 2),
+          ...(byCategory['cereales-pains'] || []).slice(0, 2)
+        ],
+        servings: Math.floor((byCategory['produits-laitiers']?.[0]?.quantite || 0) / 0.25),
+        priority: 'normal'
+      });
+    }
+
+    if (hasCanned) {
+      mealSuggestions.push({
+        name: '🥫 وجبة سريعة / Repas Rapide',
+        description: 'À base de conserves',
+        ingredients: (byCategory['conserves'] || []).slice(0, 3),
+        servings: byCategory['conserves']?.[0]?.quantite || 0,
+        priority: 'low'
+      });
+    }
+
+    res.json({
+      mealSuggestions,
+      expiringSoon,
+      availableByCategory: Object.keys(byCategory).map(cat => ({
+        categorie: cat,
+        count: byCategory[cat].length,
+        items: byCategory[cat].slice(0, 5)
+      })),
+      totalAvailable: available.length
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur suggestions repas', error: error.message });
+  }
+};
