@@ -78,8 +78,17 @@ const foodStockSchema = new mongoose.Schema({
     },
     action: {
       type: String,
-      enum: ['ajout', 'consommation', 'modification', 'reapprovisionnement'],
+      enum: ['ajout', 'consommation', 'modification', 'reapprovisionnement', 'sortie'],
       required: true
+    },
+    typeSortie: {
+      type: String,
+      enum: ['don', 'transfert', 'perte', 'expire_jete', 'retour_fournisseur', 'autre'],
+      default: null
+    },
+    destination: {
+      type: String,
+      trim: true
     },
     quantite: Number,
     quantiteRestante: Number,
@@ -143,6 +152,21 @@ foodStockSchema.methods.enregistrerConsommation = function(quantite, utilisateur
     quantite: quantite,
     quantiteRestante: this.quantite,
     utilisateur: utilisateur,
+    notes: raison
+  });
+};
+
+// Méthode pour enregistrer une sortie
+foodStockSchema.methods.enregistrerSortie = function(quantite, utilisateur, typeSortie, destination = '', raison = '') {
+  this.quantite -= quantite;
+  
+  this.historique.push({
+    action: 'sortie',
+    quantite: quantite,
+    quantiteRestante: this.quantite,
+    utilisateur: utilisateur,
+    typeSortie: typeSortie,
+    destination: destination,
     notes: raison
   });
 };

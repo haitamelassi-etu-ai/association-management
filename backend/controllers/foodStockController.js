@@ -269,6 +269,182 @@ exports.consommerStock = async (req, res) => {
   }
 };
 
+// Enregistrer une sortie de stock
+exports.sortieStock = async (req, res) => {
+  try {
+    const { quantite, typeSortie, destination, raison } = req.body;
+    const item = await FoodStock.findById(req.params.id);
+    
+    if (!item) {
+      return res.status(404).json({ message: 'Article non trouvé' });
+    }
+
+    if (!quantite || quantite <= 0) {
+      return res.status(400).json({ message: 'La quantité doit être supérieure à 0' });
+    }
+
+    if (quantite > item.quantite) {
+      return res.status(400).json({ 
+        message: 'Quantité demandée supérieure à la quantité disponible',
+        disponible: item.quantite
+      });
+    }
+
+    if (!typeSortie) {
+      return res.status(400).json({ message: 'Le type de sortie est obligatoire' });
+    }
+
+    item.enregistrerSortie(quantite, req.user.id, typeSortie, destination, raison);
+    await item.save();
+
+    const typeSortieLabels = {
+      don: 'Don',
+      transfert: 'Transfert',
+      perte: 'Perte',
+      expire_jete: 'Expiré/Jeté',
+      retour_fournisseur: 'Retour fournisseur',
+      autre: 'Autre'
+    };
+
+    await notifyAdmins({
+      type: typeSortie === 'don' ? 'info' : 'warning',
+      title: `Stock Alimentaire - Sortie (${typeSortieLabels[typeSortie] || typeSortie})`,
+      message: `${item.nom || 'Article'}: -${quantite} ${item.unite} (reste ${item.quantite})${destination ? ' → ' + destination : ''}`,
+      icon: '📤',
+      link: '/professional/food-stock',
+      metadata: { foodStockId: item._id, action: 'sortie', typeSortie, quantite, destination, raison },
+      createdBy: req.user.id
+    });
+
+    res.json(item);
+  } catch (error) {
+    console.error('Erreur lors de la sortie:', error);
+    res.status(400).json({ message: 'Erreur lors de la sortie', error: error.message });
+  }
+};
+
+// Obtenir l'historique global de tous les mouvements de stock
+exports.getGlobalHistory = async (req, res) => {
+  try {
+    const { action, typeSortie, search, dateFrom, dateTo, page: pageParam, limit: limitParam } = req.query;
+    const page = parseInt(pageParam) || 1;
+    const limit = parseInt(limitParam) || 50;
+
+    // Build aggregation pipeline
+    const pipeline = [
+      { $unwind: '$historique' },
+      { $lookup: { from: 'users', localField: 'historique.utilisateur', foreignField: '_id', as: 'historique.utilisateurInfo' } },
+      { $unwind: { path: '$historique.utilisateurInfo', preserveNullAndEmptyArrays: true } }
+    ];
+
+    // Match filters
+    const matchStage = {};
+    if (action) {
+      if (action === 'sortie_consommation') {
+        matchStage['historique.action'] = { $in: ['sortie', 'consommation'] };
+      } else {
+        matchStage['historique.action'] = action;
+      }
+    }
+    if (typeSortie) {
+      matchStage['historique.typeSortie'] = typeSortie;
+    }
+    if (dateFrom || dateTo) {
+      matchStage['historique.date'] = {};
+      if (dateFrom) matchStage['historique.date'].$gte = new Date(dateFrom);
+      if (dateTo) matchStage['historique.date'].$lte = new Date(dateTo + 'T23:59:59.999Z');
+    }
+    if (search) {
+      matchStage['nom'] = { $regex: search, $options: 'i' };
+    }
+
+    if (Object.keys(matchStage).length > 0) {
+      pipeline.push({ $match: matchStage });
+    }
+
+    // Count total
+    const countPipeline = [...pipeline, { $count: 'total' }];
+    const countResult = await FoodStock.aggregate(countPipeline);
+    const total = countResult[0]?.total || 0;
+
+    // Sort, paginate, project
+    pipeline.push({ $sort: { 'historique.date': -1 } });
+    pipeline.push({ $skip: (page - 1) * limit });
+    pipeline.push({ $limit: limit });
+    pipeline.push({
+      $project: {
+        _id: 1,
+        nom: 1,
+        categorie: 1,
+        unite: 1,
+        'historique.date': 1,
+        'historique.action': 1,
+        'historique.quantite': 1,
+        'historique.quantiteRestante': 1,
+        'historique.notes': 1,
+        'historique.typeSortie': 1,
+        'historique.destination': 1,
+        'historique.utilisateurInfo.name': 1,
+        'historique.utilisateurInfo.email': 1
+      }
+    });
+
+    const results = await FoodStock.aggregate(pipeline);
+
+    // Flatten results
+    const history = results.map(r => ({
+      itemId: r._id,
+      itemNom: r.nom,
+      itemCategorie: r.categorie,
+      itemUnite: r.unite,
+      date: r.historique.date,
+      action: r.historique.action,
+      quantite: r.historique.quantite,
+      quantiteRestante: r.historique.quantiteRestante,
+      notes: r.historique.notes,
+      typeSortie: r.historique.typeSortie || null,
+      destination: r.historique.destination || null,
+      utilisateur: r.historique.utilisateurInfo ? {
+        name: r.historique.utilisateurInfo.name,
+        email: r.historique.utilisateurInfo.email
+      } : null
+    }));
+
+    // Stats summary
+    const statsPipeline = [
+      { $unwind: '$historique' }
+    ];
+    if (action === 'sortie_consommation') {
+      statsPipeline.push({ $match: { 'historique.action': { $in: ['sortie', 'consommation'] } } });
+    }
+    statsPipeline.push({
+      $group: {
+        _id: '$historique.action',
+        count: { $sum: 1 },
+        totalQuantite: { $sum: '$historique.quantite' }
+      }
+    });
+    const stats = await FoodStock.aggregate(statsPipeline);
+
+    // Sortie breakdown by type
+    const sortieBreakdown = await FoodStock.aggregate([
+      { $unwind: '$historique' },
+      { $match: { 'historique.action': 'sortie' } },
+      { $group: { _id: '$historique.typeSortie', count: { $sum: 1 }, totalQuantite: { $sum: '$historique.quantite' } } }
+    ]);
+
+    res.json({
+      history,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      stats,
+      sortieBreakdown
+    });
+  } catch (error) {
+    console.error('Erreur historique global:', error);
+    res.status(500).json({ message: 'Erreur serveur', error: error.message });
+  }
+};
+
 // Supprimer un article
 exports.deleteStockItem = async (req, res) => {
   try {

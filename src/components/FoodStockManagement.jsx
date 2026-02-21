@@ -64,6 +64,22 @@ const FoodStockManagement = () => {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyData, setHistoryData] = useState({ nom: '', historique: [] });
 
+  // Sortie (exit) modal
+  const [showSortieModal, setShowSortieModal] = useState(false);
+  const [sortieData, setSortieData] = useState({ quantite: 0, typeSortie: 'don', destination: '', raison: '' });
+
+  // Global stock history tab
+  const [globalHistory, setGlobalHistory] = useState(null);
+  const [globalHistoryLoading, setGlobalHistoryLoading] = useState(false);
+  const [historyFilters, setHistoryFilters] = useState({
+    action: 'sortie_consommation',
+    typeSortie: '',
+    search: '',
+    dateFrom: '',
+    dateTo: '',
+    page: 1
+  });
+
   const categories = [
     { value: 'fruits-legumes', label: '🍎 Fruits & Légumes', icon: '🥗' },
     { value: 'viandes-poissons', label: '🥩 Viandes & Poissons', icon: '🍖' },
@@ -778,10 +794,62 @@ const FoodStockManagement = () => {
     }
   };
 
+  // Charger l'historique global
+  const fetchGlobalHistory = async (filters = historyFilters) => {
+    setGlobalHistoryLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filters.action) params.append('action', filters.action);
+      if (filters.typeSortie) params.append('typeSortie', filters.typeSortie);
+      if (filters.search) params.append('search', filters.search);
+      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
+      if (filters.dateTo) params.append('dateTo', filters.dateTo);
+      params.append('page', filters.page || 1);
+      params.append('limit', 50);
+      const res = await axios.get(`${API_URL}/food-stock/history/global?${params.toString()}`, getAuthHeaders());
+      setGlobalHistory(res.data);
+    } catch (error) {
+      console.error('Erreur chargement historique global:', error);
+    } finally {
+      setGlobalHistoryLoading(false);
+    }
+  };
+
+  // Enregistrer une sortie
+  const handleSortie = async (e) => {
+    e.preventDefault();
+    if (sortieData.quantite <= 0) {
+      alert('La quantité doit être supérieure à 0');
+      return;
+    }
+    try {
+      await axios.post(
+        `${API_URL}/food-stock/${currentItem._id}/sortie`,
+        sortieData,
+        getAuthHeaders()
+      );
+      setShowSortieModal(false);
+      setSortieData({ quantite: 0, typeSortie: 'don', destination: '', raison: '' });
+      fetchData();
+      if (activeTab === 'history') fetchGlobalHistory();
+      alert('Sortie enregistrée avec succès!');
+    } catch (error) {
+      console.error('Erreur sortie:', error);
+      alert(error.response?.data?.message || 'Erreur lors de la sortie');
+    }
+  };
+
+  const openSortieModal = (item) => {
+    setCurrentItem(item);
+    setSortieData({ quantite: 0, typeSortie: 'don', destination: '', raison: '' });
+    setShowSortieModal(true);
+  };
+
   // Charger données quand on change de tab
   useEffect(() => {
     if (activeTab === 'charts' && !chartData) fetchChartData();
     if (activeTab === 'calendar' && !calendarData) fetchCalendarData();
+    if (activeTab === 'history') fetchGlobalHistory();
   }, [activeTab]);
 
   // Helper pour les couleurs des graphiques
@@ -1162,6 +1230,9 @@ const FoodStockManagement = () => {
         <button className={`tab-btn ${activeTab === 'stock' ? 'active' : ''}`} onClick={() => setActiveTab('stock')}>
           📋 Stock
         </button>
+        <button className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
+          📤 الخروج والاستهلاك
+        </button>
         <button className={`tab-btn ${activeTab === 'charts' ? 'active' : ''}`} onClick={() => setActiveTab('charts')}>
           📊 Graphiques
         </button>
@@ -1272,6 +1343,13 @@ const FoodStockManagement = () => {
                         🍽️
                       </button>
                       <button 
+                        className="btn-action sortie"
+                        onClick={() => openSortieModal(item)}
+                        title="Sortie / خروج"
+                      >
+                        📤
+                      </button>
+                      <button 
                         className="btn-action plan"
                         onClick={() => showConsumptionPlan(item)}
                         title="Plan de consommation"
@@ -1346,6 +1424,278 @@ const FoodStockManagement = () => {
       )}
 
       </>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* TAB: الخروج والاستهلاك (History)       */}
+      {/* ═══════════════════════════════════════ */}
+      {activeTab === 'history' && (
+        <div className="global-history-container">
+          {/* Stats Summary Cards */}
+          {globalHistory?.stats && (
+            <div className="history-stats-cards">
+              {(() => {
+                const sortieCount = globalHistory.stats.find(s => s._id === 'sortie');
+                const consoCount = globalHistory.stats.find(s => s._id === 'consommation');
+                const totalSortie = sortieCount?.totalQuantite || 0;
+                const totalConso = consoCount?.totalQuantite || 0;
+                return (
+                  <>
+                    <div className="history-stat-card sortie">
+                      <div className="hstat-icon">📤</div>
+                      <div className="hstat-info">
+                        <span className="hstat-value">{sortieCount?.count || 0}</span>
+                        <span className="hstat-label">خروج / Sorties</span>
+                        <span className="hstat-qty">{totalSortie.toFixed(1)} unités</span>
+                      </div>
+                    </div>
+                    <div className="history-stat-card consommation">
+                      <div className="hstat-icon">🍽️</div>
+                      <div className="hstat-info">
+                        <span className="hstat-value">{consoCount?.count || 0}</span>
+                        <span className="hstat-label">استهلاك / Consommation</span>
+                        <span className="hstat-qty">{totalConso.toFixed(1)} unités</span>
+                      </div>
+                    </div>
+                    <div className="history-stat-card total-movement">
+                      <div className="hstat-icon">📊</div>
+                      <div className="hstat-info">
+                        <span className="hstat-value">{(sortieCount?.count || 0) + (consoCount?.count || 0)}</span>
+                        <span className="hstat-label">Total Mouvements</span>
+                        <span className="hstat-qty">{(totalSortie + totalConso).toFixed(1)} unités</span>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Sortie Breakdown */}
+          {globalHistory?.sortieBreakdown && globalHistory.sortieBreakdown.length > 0 && (
+            <div className="sortie-breakdown">
+              <h3>📤 Répartition des Sorties</h3>
+              <div className="breakdown-chips">
+                {globalHistory.sortieBreakdown.map((b, i) => {
+                  const typeLabels = {
+                    don: { label: 'تبرع / Don', icon: '🎁', color: '#43e97b' },
+                    transfert: { label: 'تحويل / Transfert', icon: '🔄', color: '#667eea' },
+                    perte: { label: 'خسارة / Perte', icon: '💔', color: '#f5576c' },
+                    expire_jete: { label: 'منتهي / Expiré', icon: '🗑️', color: '#1f2937' },
+                    retour_fournisseur: { label: 'إرجاع / Retour', icon: '↩️', color: '#f5a623' },
+                    autre: { label: 'أخرى / Autre', icon: '📌', color: '#999' }
+                  };
+                  const info = typeLabels[b._id] || typeLabels.autre;
+                  return (
+                    <div key={i} className="breakdown-chip" style={{ borderColor: info.color }}>
+                      <span className="chip-icon">{info.icon}</span>
+                      <span className="chip-label">{info.label}</span>
+                      <span className="chip-count" style={{ background: info.color }}>{b.count}</span>
+                      <span className="chip-qty">{b.totalQuantite?.toFixed(1)} u.</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Filters */}
+          <div className="history-filters">
+            <div className="hfilter-group">
+              <label>النوع / Type</label>
+              <select
+                value={historyFilters.action}
+                onChange={(e) => {
+                  const newF = { ...historyFilters, action: e.target.value, page: 1 };
+                  setHistoryFilters(newF);
+                  fetchGlobalHistory(newF);
+                }}
+              >
+                <option value="sortie_consommation">الكل / Tout (Sorties + Consommation)</option>
+                <option value="sortie">📤 خروج / Sorties uniquement</option>
+                <option value="consommation">🍽️ استهلاك / Consommation uniquement</option>
+                <option value="">📋 جميع الحركات / Tous les mouvements</option>
+              </select>
+            </div>
+            {(historyFilters.action === 'sortie' || historyFilters.action === 'sortie_consommation') && (
+              <div className="hfilter-group">
+                <label>نوع الخروج / Type de sortie</label>
+                <select
+                  value={historyFilters.typeSortie}
+                  onChange={(e) => {
+                    const newF = { ...historyFilters, typeSortie: e.target.value, page: 1 };
+                    setHistoryFilters(newF);
+                    fetchGlobalHistory(newF);
+                  }}
+                >
+                  <option value="">الكل / Tous</option>
+                  <option value="don">🎁 تبرع / Don</option>
+                  <option value="transfert">🔄 تحويل / Transfert</option>
+                  <option value="perte">💔 خسارة / Perte</option>
+                  <option value="expire_jete">🗑️ منتهي / Expiré jeté</option>
+                  <option value="retour_fournisseur">↩️ إرجاع / Retour fournisseur</option>
+                  <option value="autre">📌 أخرى / Autre</option>
+                </select>
+              </div>
+            )}
+            <div className="hfilter-group">
+              <label>🔍 بحث / Recherche</label>
+              <input
+                type="text"
+                placeholder="اسم المنتج / Nom du produit..."
+                value={historyFilters.search}
+                onChange={(e) => {
+                  const newF = { ...historyFilters, search: e.target.value, page: 1 };
+                  setHistoryFilters(newF);
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') fetchGlobalHistory(); }}
+              />
+            </div>
+            <div className="hfilter-group">
+              <label>من / Du</label>
+              <input
+                type="date"
+                value={historyFilters.dateFrom}
+                onChange={(e) => {
+                  const newF = { ...historyFilters, dateFrom: e.target.value, page: 1 };
+                  setHistoryFilters(newF);
+                  fetchGlobalHistory(newF);
+                }}
+              />
+            </div>
+            <div className="hfilter-group">
+              <label>إلى / Au</label>
+              <input
+                type="date"
+                value={historyFilters.dateTo}
+                onChange={(e) => {
+                  const newF = { ...historyFilters, dateTo: e.target.value, page: 1 };
+                  setHistoryFilters(newF);
+                  fetchGlobalHistory(newF);
+                }}
+              />
+            </div>
+            <button className="hfilter-search-btn" onClick={() => fetchGlobalHistory()}>🔍 بحث</button>
+            <button className="hfilter-reset-btn" onClick={() => {
+              const resetF = { action: 'sortie_consommation', typeSortie: '', search: '', dateFrom: '', dateTo: '', page: 1 };
+              setHistoryFilters(resetF);
+              fetchGlobalHistory(resetF);
+            }}>🔄 إعادة</button>
+          </div>
+
+          {/* History Table */}
+          {globalHistoryLoading ? (
+            <div className="loading-spinner" style={{ minHeight: '200px' }}>جاري التحميل...</div>
+          ) : !globalHistory || globalHistory.history.length === 0 ? (
+            <div className="empty-state"><p>لا توجد حركات / Aucun mouvement</p></div>
+          ) : (
+            <>
+              <div className="history-table-wrapper">
+                <table className="stock-table history-table">
+                  <thead>
+                    <tr>
+                      <th>التاريخ / Date</th>
+                      <th>المنتج / Produit</th>
+                      <th>النوع / Type</th>
+                      <th>الكمية / Quantité</th>
+                      <th>المتبقي / Restant</th>
+                      <th>تفاصيل / Détails</th>
+                      <th>المستخدم / Utilisateur</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {globalHistory.history.map((h, idx) => {
+                      const actionLabels = {
+                        ajout: { icon: '➕', label: 'إضافة', labelFr: 'Ajout', color: '#43e97b' },
+                        consommation: { icon: '🍽️', label: 'استهلاك', labelFr: 'Consommation', color: '#667eea' },
+                        modification: { icon: '✏️', label: 'تعديل', labelFr: 'Modification', color: '#f5a623' },
+                        reapprovisionnement: { icon: '📦', label: 'تزويد', labelFr: 'Réappro.', color: '#764ba2' },
+                        sortie: { icon: '📤', label: 'خروج', labelFr: 'Sortie', color: '#f5576c' }
+                      };
+                      const info = actionLabels[h.action] || { icon: '📌', label: h.action, labelFr: h.action, color: '#999' };
+
+                      const typeSortieLabels = {
+                        don: { icon: '🎁', label: 'تبرع / Don' },
+                        transfert: { icon: '🔄', label: 'تحويل / Transfert' },
+                        perte: { icon: '💔', label: 'خسارة / Perte' },
+                        expire_jete: { icon: '🗑️', label: 'منتهي / Expiré' },
+                        retour_fournisseur: { icon: '↩️', label: 'إرجاع / Retour' },
+                        autre: { icon: '📌', label: 'أخرى / Autre' }
+                      };
+
+                      return (
+                        <tr key={idx} className={`history-row ${h.action}`}>
+                          <td className="history-date-cell">
+                            <div className="date-main">{new Date(h.date).toLocaleDateString('fr-FR')}</div>
+                            <div className="date-time">{new Date(h.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
+                          </td>
+                          <td>
+                            <div className="product-name">{h.itemNom}</div>
+                            <div className="product-cat">{categoryLabels[h.itemCategorie] || h.itemCategorie}</div>
+                          </td>
+                          <td>
+                            <span className="action-badge" style={{ background: info.color }}>
+                              {info.icon} {info.label}
+                            </span>
+                          </td>
+                          <td className="qty-cell">
+                            <span className="qty-value" style={{ color: info.color }}>
+                              {h.action === 'ajout' || h.action === 'reapprovisionnement' ? '+' : '-'}{h.quantite} {h.itemUnite}
+                            </span>
+                          </td>
+                          <td className="remaining-cell">{h.quantiteRestante} {h.itemUnite}</td>
+                          <td className="details-cell">
+                            {h.action === 'sortie' && h.typeSortie && (
+                              <div className="detail-tag">
+                                {(typeSortieLabels[h.typeSortie] || typeSortieLabels.autre).icon}{' '}
+                                {(typeSortieLabels[h.typeSortie] || typeSortieLabels.autre).label}
+                              </div>
+                            )}
+                            {h.destination && <div className="detail-dest">📍 {h.destination}</div>}
+                            {h.notes && <div className="detail-notes">💬 {h.notes}</div>}
+                          </td>
+                          <td className="user-cell">
+                            {h.utilisateur ? (
+                              <span>👤 {h.utilisateur.name || h.utilisateur.email}</span>
+                            ) : (
+                              <span className="no-user">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {globalHistory.pagination && globalHistory.pagination.pages > 1 && (
+                <div className="history-pagination">
+                  <button
+                    disabled={historyFilters.page <= 1}
+                    onClick={() => {
+                      const newF = { ...historyFilters, page: historyFilters.page - 1 };
+                      setHistoryFilters(newF);
+                      fetchGlobalHistory(newF);
+                    }}
+                  >◀ السابق</button>
+                  <span className="page-info">
+                    صفحة {globalHistory.pagination.page} / {globalHistory.pagination.pages}
+                    ({globalHistory.pagination.total} نتيجة)
+                  </span>
+                  <button
+                    disabled={historyFilters.page >= globalHistory.pagination.pages}
+                    onClick={() => {
+                      const newF = { ...historyFilters, page: historyFilters.page + 1 };
+                      setHistoryFilters(newF);
+                      fetchGlobalHistory(newF);
+                    }}
+                  >التالي ▶</button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {/* ═══════════════════════════════════════ */}
@@ -1573,11 +1923,16 @@ const FoodStockManagement = () => {
                   {historyData.historique.map((h, idx) => {
                     const actionLabels = {
                       ajout: { icon: '➕', label: 'Ajouté', color: '#43e97b' },
-                      consommation: { icon: '🍽️', label: 'Consommé', color: '#f5576c' },
+                      consommation: { icon: '🍽️', label: 'Consommé / استهلك', color: '#f5576c' },
                       modification: { icon: '✏️', label: 'Modifié', color: '#f5a623' },
-                      reapprovisionnement: { icon: '📦', label: 'Réapprovisionné', color: '#667eea' }
+                      reapprovisionnement: { icon: '📦', label: 'Réapprovisionné', color: '#667eea' },
+                      sortie: { icon: '📤', label: 'خروج / Sorti', color: '#e74c3c' }
                     };
                     const info = actionLabels[h.action] || { icon: '📌', label: h.action, color: '#999' };
+                    const typeSortieLabels = {
+                      don: '🎁 تبرع/Don', transfert: '🔄 تحويل/Transfert', perte: '💔 خسارة/Perte',
+                      expire_jete: '🗑️ منتهي/Expiré', retour_fournisseur: '↩️ إرجاع/Retour', autre: '📌 أخرى/Autre'
+                    };
                     return (
                       <div key={idx} className="history-item">
                         <div className="history-dot" style={{ background: info.color }}></div>
@@ -1595,6 +1950,10 @@ const FoodStockManagement = () => {
                             <span>Quantité : <strong>{h.quantite}</strong></span>
                             <span>Restant : <strong>{h.quantiteRestante}</strong></span>
                           </div>
+                          {h.action === 'sortie' && h.typeSortie && (
+                            <div className="history-sortie-type">📤 {typeSortieLabels[h.typeSortie] || h.typeSortie}</div>
+                          )}
+                          {h.destination && <div className="history-destination">📍 {h.destination}</div>}
                           {h.notes && <div className="history-notes">💬 {h.notes}</div>}
                           {h.utilisateur && <div className="history-user">👤 {h.utilisateur.name || h.utilisateur.email}</div>}
                         </div>
@@ -2079,6 +2438,95 @@ const FoodStockManagement = () => {
                 </button>
                 <button type="submit" className={`btn-submit ${adjustData.type === 'add' ? 'btn-add-stock' : 'btn-remove-stock'}`}>
                   {adjustData.type === 'add' ? '➕ Ajouter au stock' : '➖ Retirer du stock'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Sortie / خروج */}
+      {showSortieModal && currentItem && (
+        <div className="modal-overlay" onClick={() => setShowSortieModal(false)}>
+          <div className="modal-content sortie-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header sortie-header">
+              <h2>📤 خروج / Sortie: {currentItem.nom}</h2>
+              <button className="modal-close" onClick={() => setShowSortieModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleSortie} className="sortie-form">
+              <div className="current-stock-info">
+                <span className="info-label">المخزون الحالي / Stock actuel :</span>
+                <span className="info-value">{currentItem.quantite} {currentItem.unite}</span>
+              </div>
+
+              <div className="sortie-type-grid">
+                {[
+                  { value: 'don', icon: '🎁', label: 'تبرع', labelFr: 'Don' },
+                  { value: 'transfert', icon: '🔄', label: 'تحويل', labelFr: 'Transfert' },
+                  { value: 'perte', icon: '💔', label: 'خسارة', labelFr: 'Perte' },
+                  { value: 'expire_jete', icon: '🗑️', label: 'منتهي', labelFr: 'Expiré/Jeté' },
+                  { value: 'retour_fournisseur', icon: '↩️', label: 'إرجاع', labelFr: 'Retour fourn.' },
+                  { value: 'autre', icon: '📌', label: 'أخرى', labelFr: 'Autre' }
+                ].map(t => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    className={`sortie-type-btn ${sortieData.typeSortie === t.value ? 'active' : ''}`}
+                    onClick={() => setSortieData({ ...sortieData, typeSortie: t.value })}
+                  >
+                    <span className="st-icon">{t.icon}</span>
+                    <span className="st-label">{t.label}</span>
+                    <span className="st-label-fr">{t.labelFr}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="form-group">
+                <label>الكمية / Quantité ({currentItem.unite}) *</label>
+                <input
+                  type="number"
+                  required
+                  min="0.01"
+                  max={currentItem.quantite}
+                  step="0.01"
+                  value={sortieData.quantite}
+                  onChange={(e) => setSortieData({ ...sortieData, quantite: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+
+              <div className="sortie-preview">
+                <span className="preview-label">المخزون الجديد / Nouveau stock :</span>
+                <span className="preview-value negative">
+                  {(currentItem.quantite - (sortieData.quantite || 0)).toFixed(2)} {currentItem.unite}
+                </span>
+              </div>
+
+              <div className="form-group">
+                <label>الوجهة / Destination</label>
+                <input
+                  type="text"
+                  value={sortieData.destination}
+                  onChange={(e) => setSortieData({ ...sortieData, destination: e.target.value })}
+                  placeholder="Ex: جمعية خيرية، مستشفى، مركز آخر..."
+                />
+              </div>
+
+              <div className="form-group">
+                <label>السبب / Raison</label>
+                <textarea
+                  value={sortieData.raison}
+                  onChange={(e) => setSortieData({ ...sortieData, raison: e.target.value })}
+                  rows="2"
+                  placeholder="تفاصيل إضافية / Détails supplémentaires..."
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn-cancel" onClick={() => setShowSortieModal(false)}>
+                  إلغاء / Annuler
+                </button>
+                <button type="submit" className="btn-submit btn-sortie-submit">
+                  📤 تأكيد الخروج / Confirmer la sortie
                 </button>
               </div>
             </form>

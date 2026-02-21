@@ -15,12 +15,14 @@ router.get('/alerts/all', protect, foodStockController.getAlerts);
 router.get('/stats/overview', protect, foodStockController.getStatistics);
 router.get('/stats/charts', protect, foodStockController.getChartData);
 router.get('/stats/expiration-calendar', protect, foodStockController.getExpirationCalendar);
+router.get('/history/global', protect, foodStockController.getGlobalHistory);
 
 // Routes pour un article spécifique
 router.get('/:id', protect, foodStockController.getStockItem);
 router.put('/:id', protect, foodStockController.updateStockItem);
 router.delete('/:id', protect, foodStockController.deleteStockItem);
 router.post('/:id/consommer', protect, foodStockController.consommerStock);
+router.post('/:id/sortie', protect, foodStockController.sortieStock);
 router.post('/:id/adjust', protect, foodStockController.adjustStock);
 router.get('/:id/plan', protect, foodStockController.getPlanConsommation);
 router.get('/:id/history', protect, foodStockController.getItemHistory);

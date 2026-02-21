@@ -450,6 +450,7 @@ function Beneficiaries() {
           <td style="padding:5px 10px;color:#1e293b;width:32%;border-bottom:1px solid #f1f5f9;font-size:12px;">${v2 || 'N/A'}</td>
         </tr>`
 
+        
       const sectionTitle = (title) => `
         <tr><td colspan="4" style="padding:12px 10px 6px;font-size:14px;font-weight:700;color:#2563eb;border-bottom:2px solid #2563eb;background:#f0f5ff;">
           ${title}
