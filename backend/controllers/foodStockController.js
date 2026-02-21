@@ -69,13 +69,25 @@ exports.getStockItem = async (req, res) => {
 // Créer un nouvel article
 exports.createStockItem = async (req, res) => {
   try {
+    const body = { ...req.body };
+
+    // Clean empty dateExpiration (empty string can't cast to Date)
+    if (!body.dateExpiration || String(body.dateExpiration).trim() === '') {
+      delete body.dateExpiration;
+    }
+
+    // Clean empty barcode to avoid unique constraint on empty strings
+    if (!body.barcode || String(body.barcode).trim() === '') {
+      delete body.barcode;
+    }
+
     const itemData = {
-      ...req.body,
-      quantiteInitiale: req.body.quantite,
+      ...body,
+      quantiteInitiale: body.quantite,
       historique: [{
         action: 'ajout',
-        quantite: req.body.quantite,
-        quantiteRestante: req.body.quantite,
+        quantite: body.quantite,
+        quantiteRestante: body.quantite,
         utilisateur: req.user.id,
         notes: 'Article ajouté au stock'
       }]
@@ -126,10 +138,21 @@ exports.getByBarcode = async (req, res) => {
 // Mettre à jour un article
 exports.updateStockItem = async (req, res) => {
   try {
+    // Clean empty dateExpiration before update
+    if (req.body.dateExpiration !== undefined && (!req.body.dateExpiration || String(req.body.dateExpiration).trim() === '')) {
+      req.body.dateExpiration = null;
+    }
+
     const item = await FoodStock.findById(req.params.id);
     
     if (!item) {
       return res.status(404).json({ message: 'Article non trouvé' });
+    }
+
+    // Clean empty barcode to avoid unique constraint
+    if (req.body.barcode !== undefined && (!req.body.barcode || String(req.body.barcode).trim() === '')) {
+      delete req.body.barcode;
+      item.barcode = undefined;
     }
 
     const ancienneQuantite = item.quantite;
@@ -933,40 +956,53 @@ exports.bulkImport = async (req, res) => {
       return res.status(400).json({ message: 'Liste d\'articles requise' });
     }
 
+    // Generate unique batch ID for this import (for rollback)
+    const importBatchId = `import_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
     const results = [];
     for (const entry of items) {
       try {
-        // Validate required fields
-        if (!entry.nom || !entry.categorie || !entry.quantite || !entry.unite || !entry.prix || !entry.dateExpiration || !entry.seuilCritique) {
-          results.push({ nom: entry.nom || 'Inconnu', success: false, error: 'Champs obligatoires manquants' });
+        // Only nom is truly required
+        if (!entry.nom || String(entry.nom).trim() === '') {
+          results.push({ nom: entry.nom || 'Inconnu', success: false, error: 'Le nom est obligatoire' });
           continue;
         }
 
+        const qty = Number(entry.quantite) || 0;
         const itemData = {
-          nom: entry.nom,
-          categorie: entry.categorie,
-          quantite: Number(entry.quantite),
-          quantiteInitiale: Number(entry.quantite),
-          unite: entry.unite,
-          prix: Number(entry.prix),
+          nom: String(entry.nom).trim(),
+          categorie: entry.categorie || 'autres',
+          quantite: qty,
+          quantiteInitiale: qty,
+          unite: entry.unite || 'kg',
+          prix: Number(entry.prix) || 0,
           dateAchat: entry.dateAchat ? new Date(entry.dateAchat) : new Date(),
-          dateExpiration: new Date(entry.dateExpiration),
-          seuilCritique: Number(entry.seuilCritique),
+          seuilCritique: Number(entry.seuilCritique) || 5,
           fournisseur: entry.fournisseur || '',
           emplacement: entry.emplacement || '',
           notes: entry.notes || '',
-          barcode: entry.barcode || undefined,
+          importBatchId: importBatchId,
           historique: [{
             action: 'ajout',
-            quantite: Number(entry.quantite),
-            quantiteRestante: Number(entry.quantite),
+            quantite: qty,
+            quantiteRestante: qty,
             utilisateur: req.user.id,
-            notes: 'Import Excel'
+            notes: `Import Excel (batch: ${importBatchId})`
           }]
         };
 
-        // Remove barcode if empty to avoid unique constraint
-        if (!itemData.barcode) delete itemData.barcode;
+        // Only set dateExpiration if provided and valid
+        if (entry.dateExpiration && String(entry.dateExpiration).trim() !== '') {
+          const expDate = new Date(entry.dateExpiration);
+          if (!isNaN(expDate.getTime())) {
+            itemData.dateExpiration = expDate;
+          }
+        }
+
+        // Only set barcode if non-empty to avoid unique constraint
+        if (entry.barcode && String(entry.barcode).trim() !== '') {
+          itemData.barcode = String(entry.barcode).trim();
+        }
 
         const newItem = new FoodStock(itemData);
         await newItem.save();
@@ -977,6 +1013,7 @@ exports.bulkImport = async (req, res) => {
     }
 
     res.json({
+      importBatchId,
       results,
       summary: {
         total: items.length,
@@ -986,6 +1023,59 @@ exports.bulkImport = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Erreur import', error: error.message });
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+// ROLLBACK LAST IMPORT
+// ═══════════════════════════════════════════════════════
+exports.rollbackImport = async (req, res) => {
+  try {
+    const { batchId } = req.params;
+    if (!batchId) {
+      return res.status(400).json({ message: 'Batch ID requis' });
+    }
+
+    // Find all items from this batch
+    const batchItems = await FoodStock.find({ importBatchId: batchId });
+    if (batchItems.length === 0) {
+      return res.status(404).json({ message: 'Aucun article trouv\u00e9 pour ce lot d\'import' });
+    }
+
+    // Delete all items from this batch
+    const result = await FoodStock.deleteMany({ importBatchId: batchId });
+
+    res.json({
+      message: `${result.deletedCount} articles supprimés (rollback du lot ${batchId})`,
+      deletedCount: result.deletedCount,
+      batchId
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur rollback', error: error.message });
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+// GET IMPORT BATCHES (list recent imports)
+// ═══════════════════════════════════════════════════════
+exports.getImportBatches = async (req, res) => {
+  try {
+    const batches = await FoodStock.aggregate([
+      { $match: { importBatchId: { $exists: true, $ne: null } } },
+      { $group: {
+        _id: '$importBatchId',
+        count: { $sum: 1 },
+        totalValue: { $sum: { $multiply: ['$quantite', '$prix'] } },
+        firstItem: { $first: '$nom' },
+        importDate: { $min: '$createdAt' }
+      }},
+      { $sort: { importDate: -1 } },
+      { $limit: 10 }
+    ]);
+
+    res.json({ batches });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur', error: error.message });
   }
 };
 

@@ -26,6 +26,8 @@ router.post('/batch/consume', protect, foodStockController.batchConsume);
 router.post('/batch/sortie', protect, foodStockController.batchSortie);
 router.post('/batch/delete', protect, foodStockController.batchDelete);
 router.post('/batch/import', protect, foodStockController.bulkImport);
+router.get('/batch/imports', protect, foodStockController.getImportBatches);
+router.delete('/batch/import/:batchId', protect, foodStockController.rollbackImport);
 router.post('/inventory/count', protect, foodStockController.performInventoryCount);
 
 // Routes pour un article spécifique

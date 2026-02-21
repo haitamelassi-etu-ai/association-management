@@ -102,6 +102,8 @@ const FoodStockManagement = () => {
   const [importData, setImportData] = useState([]);
   const [importLoading, setImportLoading] = useState(false);
   const fileInputRef = useRef(null);
+  const [importBatches, setImportBatches] = useState([]);
+  const [lastImportBatchId, setLastImportBatchId] = useState(null);
 
   // Suppliers
   const [suppliersData, setSuppliersData] = useState(null);
@@ -120,10 +122,14 @@ const FoodStockManagement = () => {
     { value: 'cereales-pains', label: '🍞 Céréales & Pains', icon: '🌾' },
     { value: 'conserves', label: '🥫 Conserves', icon: '📦' },
     { value: 'boissons', label: '🥤 Boissons', icon: '🧃' },
+    { value: 'epices-condiments', label: '🌶️ Épices & Condiments', icon: '🧂' },
+    { value: 'huiles-graisses', label: '🫒 Huiles & Graisses', icon: '🛢️' },
+    { value: 'sucre-confiserie', label: '🍬 Sucre & Confiserie', icon: '🍯' },
+    { value: 'produits-nettoyage', label: '🧹 Produits de Nettoyage', icon: '🧴' },
     { value: 'autres', label: '📦 Autres', icon: '🏪' }
   ];
 
-  const unites = ['kg', 'g', 'L', 'ml', 'unités', 'boîtes', 'sachets'];
+  const unites = ['kg', 'g', 'L', 'ml', 'unités', 'boîtes', 'sachets', 'bouteilles', 'pièces', 'paquets'];
 
   // ═══════════════════════════════════════
   // Export Excel professionnel (ExcelJS)
@@ -983,16 +989,16 @@ const FoodStockManagement = () => {
         if (rowNumber === 1) return; // Skip header
         const values = row.values;
         rows.push({
-          nom: values[1] || '',
-          categorie: values[2] || 'autres',
+          nom: values[1] ? String(values[1]).trim() : '',
+          categorie: resolveCategory(values[2]),
           quantite: Number(values[3]) || 0,
-          unite: values[4] || 'kg',
+          unite: resolveUnite(values[4]),
           prix: Number(values[5]) || 0,
           dateExpiration: values[6] ? new Date(values[6]).toISOString().split('T')[0] : '',
           seuilCritique: Number(values[7]) || 5,
-          fournisseur: values[8] || '',
-          emplacement: values[9] || '',
-          barcode: values[10] || ''
+          fournisseur: values[8] ? String(values[8]).trim() : '',
+          emplacement: values[9] ? String(values[9]).trim() : '',
+          barcode: values[10] ? String(values[10]).trim() : ''
         });
       });
       setImportData(rows);
@@ -1009,20 +1015,141 @@ const FoodStockManagement = () => {
     setImportLoading(true);
     try {
       const res = await axios.post(`${API_URL}/food-stock/batch/import`, { items: importData }, getAuthHeaders());
+      const { summary, results, importBatchId } = res.data;
+      const failed = results ? results.filter(r => !r.success) : [];
+      setLastImportBatchId(importBatchId);
       setShowImportModal(false);
       setImportData([]);
       fetchData();
-      alert(`Import terminé: ${res.data.summary.successful}/${res.data.summary.total} articles importés`);
-    } catch (error) { alert('Erreur import'); }
+      fetchImportBatches();
+      let msg = `Import terminé: ${summary.successful}/${summary.total} articles importés avec succès.`;
+      if (failed.length > 0) {
+        msg += `\n\nÉchecs (${failed.length}):\n` + failed.map(f => `- ${f.nom}: ${f.error}`).join('\n');
+      }
+      alert(msg);
+    } catch (error) {
+      console.error('Import error:', error.response?.data || error);
+      alert('Erreur import: ' + (error.response?.data?.message || error.message));
+    }
     finally { setImportLoading(false); }
   };
+
+  const fetchImportBatches = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/food-stock/batch/imports`, getAuthHeaders());
+      setImportBatches(res.data.batches || []);
+    } catch (error) { console.error('Fetch batches error:', error); }
+  };
+
+  const rollbackImport = async (batchId) => {
+    const batch = importBatches.find(b => b._id === batchId);
+    const confirmMsg = batch
+      ? `Êtes-vous sûr de vouloir annuler cet import ?\n\n${batch.count} articles seront supprimés.\nPremier article: ${batch.firstItem}\nValeur totale: ${batch.totalValue?.toFixed(2)} DH`
+      : 'Êtes-vous sûr de vouloir annuler cet import ?';
+    if (!window.confirm(confirmMsg)) return;
+    try {
+      const res = await axios.delete(`${API_URL}/food-stock/batch/import/${batchId}`, getAuthHeaders());
+      alert(`✅ ${res.data.message}`);
+      fetchData();
+      fetchImportBatches();
+      if (lastImportBatchId === batchId) setLastImportBatchId(null);
+    } catch (error) {
+      alert('Erreur rollback: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  // Category / Unit mappings for Excel
+  const categoryOptions = [
+    { key: 'fruits-legumes', label: 'Fruits & Légumes' },
+    { key: 'viandes-poissons', label: 'Viandes & Poissons' },
+    { key: 'produits-laitiers', label: 'Produits Laitiers' },
+    { key: 'cereales-pains', label: 'Céréales & Pains' },
+    { key: 'conserves', label: 'Conserves' },
+    { key: 'boissons', label: 'Boissons' },
+    { key: 'epices-condiments', label: 'Épices & Condiments' },
+    { key: 'huiles-graisses', label: 'Huiles & Graisses' },
+    { key: 'sucre-confiserie', label: 'Sucre & Confiserie' },
+    { key: 'produits-nettoyage', label: 'Produits de Nettoyage' },
+    { key: 'autres', label: 'Autres' }
+  ];
+  const uniteOptions = [
+    { key: 'kg', label: 'kg' },
+    { key: 'g', label: 'g' },
+    { key: 'L', label: 'L' },
+    { key: 'ml', label: 'ml' },
+    { key: 'unités', label: 'unités' },
+    { key: 'boîtes', label: 'boîtes' },
+    { key: 'sachets', label: 'sachets' },
+    { key: 'bouteilles', label: 'bouteilles' },
+    { key: 'pièces', label: 'pièces' },
+    { key: 'paquets', label: 'paquets' }
+  ];
+
+  const categoryLabelToKey = Object.fromEntries(categoryOptions.map(c => [c.label.toLowerCase(), c.key]));
+  const uniteLabelToKey = Object.fromEntries(uniteOptions.map(u => [u.label.toLowerCase(), u.key]));
+
+  const resolveCategory = (val) => {
+    if (!val) return 'autres';
+    const v = String(val).trim().toLowerCase();
+    if (categoryOptions.find(c => c.key === v)) return v; // already a key
+    return categoryLabelToKey[v] || 'autres';
+  };
+  const resolveUnite = (val) => {
+    if (!val) return 'kg';
+    const v = String(val).trim().toLowerCase();
+    const found = uniteOptions.find(u => u.key.toLowerCase() === v);
+    if (found) return found.key;
+    return uniteLabelToKey[v] || val; // keep original if not found
+  };
+
   const downloadImportTemplate = async () => {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Template Import');
-    ws.addRow(['Nom', 'Catégorie', 'Quantité', 'Unité', 'Prix', 'Date Expiration', 'Seuil Critique', 'Fournisseur', 'Emplacement', 'Code-barres']);
-    ws.getRow(1).font = { bold: true };
-    ws.addRow(['Exemple Riz', 'cereales-pains', 50, 'kg', 12, '2026-12-31', 10, 'Fournisseur A', 'Magasin 1', '']);
-    ws.columns = [{ width: 20 },{ width: 20 },{ width: 12 },{ width: 10 },{ width: 10 },{ width: 18 },{ width: 14 },{ width: 18 },{ width: 15 },{ width: 15 }];
+
+    // Header row
+    const headerRow = ws.addRow(['Nom', 'Catégorie', 'Quantité', 'Unité', 'Prix (DH)', 'Date Expiration', 'Seuil Critique', 'Fournisseur', 'Emplacement', 'Code-barres']);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E7D32' } }; c.alignment = { horizontal: 'center' }; });
+
+    // Example rows
+    ws.addRow(['Riz', 'Céréales & Pains', 50, 'kg', 12, '2026-12-31', 10, 'Fournisseur A', 'Magasin 1', '']);
+    ws.addRow(['Huile Olive', 'Huiles & Graisses', 20, 'L', 45, '2027-06-15', 5, 'Fournisseur B', 'Magasin 2', '']);
+    ws.addRow(['Tomates', 'Fruits & Légumes', 30, 'kg', 8, '2026-03-10', 10, '', '', '']);
+
+    // Column widths
+    ws.columns = [{ width: 22 },{ width: 22 },{ width: 12 },{ width: 14 },{ width: 12 },{ width: 18 },{ width: 14 },{ width: 20 },{ width: 16 },{ width: 16 }];
+
+    // Add data validation (dropdown) for Catégorie column (B) - rows 2 to 200
+    const catList = categoryOptions.map(c => c.label).join(',');
+    for (let r = 2; r <= 200; r++) {
+      ws.getCell(`B${r}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [`"${catList}"`],
+        showErrorMessage: true,
+        errorTitle: 'Catégorie invalide',
+        error: 'Veuillez choisir une catégorie de la liste'
+      };
+    }
+
+    // Add data validation (dropdown) for Unité column (D) - rows 2 to 200
+    const unitList = uniteOptions.map(u => u.label).join(',');
+    for (let r = 2; r <= 200; r++) {
+      ws.getCell(`D${r}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [`"${unitList}"`],
+        showErrorMessage: true,
+        errorTitle: 'Unité invalide',
+        error: 'Veuillez choisir une unité de la liste'
+      };
+    }
+
+    // Date format hint for column F
+    for (let r = 2; r <= 200; r++) {
+      ws.getCell(`F${r}`).note = 'Format: AAAA-MM-JJ (ex: 2026-12-31)';
+    }
+
     const buffer = await wb.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), 'Template_Import_Stock.xlsx');
   };
@@ -1118,6 +1245,10 @@ const FoodStockManagement = () => {
     'cereales-pains': '🍞 Céréales & Pains',
     'conserves': '🥫 Conserves',
     'boissons': '🥤 Boissons',
+    'epices-condiments': '🌶️ Épices & Condiments',
+    'huiles-graisses': '🫚 Huiles & Graisses',
+    'sucre-confiserie': '🍬 Sucre & Confiserie',
+    'produits-nettoyage': '🧹 Produits de Nettoyage',
     'autres': '📦 Autres'
   };
 
@@ -1394,7 +1525,7 @@ const FoodStockManagement = () => {
           <button className="btn-export-excel" onClick={exportToExcel} title="Exporter en Excel">
             📊 Exporter
           </button>
-          <button className="btn-import" onClick={() => setShowImportModal(true)}>
+          <button className="btn-import" onClick={() => { setShowImportModal(true); fetchImportBatches(); }}>
             📥 Importer Excel
           </button>
           <input type="file" ref={fileInputRef} accept=".xlsx,.xls" style={{display:'none'}} onChange={handleFileUpload} />

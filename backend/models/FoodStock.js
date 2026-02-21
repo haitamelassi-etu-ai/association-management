@@ -16,7 +16,7 @@ const foodStockSchema = new mongoose.Schema({
   categorie: {
     type: String,
     required: [true, 'La catégorie est obligatoire'],
-    enum: ['fruits-legumes', 'viandes-poissons', 'produits-laitiers', 'cereales-pains', 'conserves', 'boissons', 'autres'],
+    enum: ['fruits-legumes', 'viandes-poissons', 'produits-laitiers', 'cereales-pains', 'conserves', 'boissons', 'epices-condiments', 'huiles-graisses', 'sucre-confiserie', 'produits-nettoyage', 'autres'],
     index: true
   },
   quantite: {
@@ -27,7 +27,7 @@ const foodStockSchema = new mongoose.Schema({
   unite: {
     type: String,
     required: [true, 'L\'unité est obligatoire'],
-    enum: ['kg', 'g', 'L', 'ml', 'unités', 'boîtes', 'sachets']
+    enum: ['kg', 'g', 'L', 'ml', 'unités', 'boîtes', 'sachets', 'bouteilles', 'pièces', 'paquets']
   },
   quantiteInitiale: {
     type: Number,
@@ -45,7 +45,7 @@ const foodStockSchema = new mongoose.Schema({
   },
   dateExpiration: {
     type: Date,
-    required: [true, 'La date d\'expiration est obligatoire'],
+    required: false,
     index: true
   },
   seuilCritique: {
@@ -70,6 +70,11 @@ const foodStockSchema = new mongoose.Schema({
   notes: {
     type: String,
     trim: true
+  },
+  importBatchId: {
+    type: String,
+    index: true,
+    sparse: true
   },
   historique: [{
     date: {
@@ -109,14 +114,18 @@ foodStockSchema.index({ categorie: 1, statut: 1 });
 // Hook pre-save pour calculer automatiquement le statut
 foodStockSchema.pre('save', function(next) {
   const maintenant = new Date();
-  const joursRestants = Math.ceil((this.dateExpiration - maintenant) / (1000 * 60 * 60 * 24));
   
-  // Vérifier si expiré
-  if (joursRestants <= 0) {
-    this.statut = 'expire';
-  } 
+  // Check expiration only if dateExpiration is set
+  if (this.dateExpiration) {
+    const joursRestants = Math.ceil((this.dateExpiration - maintenant) / (1000 * 60 * 60 * 24));
+    if (joursRestants <= 0) {
+      this.statut = 'expire';
+      return next();
+    }
+  }
+  
   // Vérifier si quantité critique
-  else if (this.quantite <= this.seuilCritique) {
+  if (this.quantite <= this.seuilCritique) {
     this.statut = 'critique';
   }
   // Vérifier si quantité faible (50% du seuil critique)
@@ -139,6 +148,7 @@ foodStockSchema.methods.calculerConsommationJournaliere = function(joursRestants
 
 // Méthode pour obtenir les jours restants avant expiration
 foodStockSchema.methods.getJoursRestants = function() {
+  if (!this.dateExpiration) return null;
   const maintenant = new Date();
   return Math.ceil((this.dateExpiration - maintenant) / (1000 * 60 * 60 * 24));
 };
